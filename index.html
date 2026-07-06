@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISIS — Assistant Personnel</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ISIS" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="theme-color" content="#00c8ff" />
+</head>
+<body>
+
+  <!-- SETUP -->
+  <div class="setup-overlay" id="setupOverlay">
+    <div class="setup-card">
+      <div class="setup-logo">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="core-letter">I</div>
+      </div>
+      <h2>ISIS</h2>
+      <p class="setup-sub">Assistant Personnel — Configuration initiale</p>
+
+      <div class="setup-step recommended">
+        <span class="step-num">★</span>
+        <div>
+          <strong>Clé API Groq — Recommandé pour la France</strong>
+          <p>console.groq.com → API Keys → Create → Copier<br>100% gratuit, aucune restriction EU, ultra-rapide</p>
+        </div>
+      </div>
+      <input type="password" id="setupGroqKey" class="setup-input" placeholder="gsk_..." autocomplete="off" />
+
+      <div class="setup-step optional">
+        <span class="step-num">2</span>
+        <div>
+          <strong>Clé API Gemini <em>(optionnel / alternative)</em></strong>
+          <p>aistudio.google.com → Get API key (peut être limité en France)</p>
+        </div>
+      </div>
+      <input type="password" id="setupApiKey" class="setup-input" placeholder="AIza..." autocomplete="off" />
+
+      <div class="setup-step optional">
+        <span class="step-num">3</span>
+        <div>
+          <strong>URL Google Apps Script <em>(Gmail + Agenda)</em></strong>
+          <p>Optionnel — ajoutez-la plus tard dans ⚙ Paramètres</p>
+        </div>
+      </div>
+      <input type="text" id="setupScriptUrl" class="setup-input" placeholder="https://script.google.com/macros/s/..." />
+
+      <button class="setup-btn" onclick="saveSetup()">Activer ISIS</button>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div class="app" id="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-mini">
+          <div class="logo-ring"></div>
+          <span>I</span>
+        </div>
+        <div>
+          <h1 class="app-title">ISIS</h1>
+          <p class="app-subtitle">Assistant Personnel</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-indicator">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-text" id="statusText">En attente</span>
+        </div>
+        <button class="icon-btn conv-btn" id="convBtn" onclick="toggleConvMode()" title="Activer le mode conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="toggleSettings()" title="Paramètres">⚙</button>
+      </div>
+    </header>
+
+    <!-- Paramètres -->
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-inner">
+        <label>Clé Claude AI ★★ (console.anthropic.com — meilleure qualité)</label>
+        <div class="input-row">
+          <input type="password" id="settingsClaudeKey" placeholder="sk-ant-..." />
+          <button class="test-btn" onclick="testKey('claude')">Tester</button>
+        </div>
+        <label>Clé OpenAI (platform.openai.com)</label>
+        <div class="input-row">
+          <input type="password" id="settingsOpenaiKey" placeholder="sk-..." />
+          <button class="test-btn" onclick="testKey('openai')">Tester</button>
+        </div>
+        <label>Clé Groq (console.groq.com — gratuit, recommandé sans les autres)</label>
+        <div class="input-row">
+          <input type="password" id="settingsGroqKey" placeholder="gsk_..." />
+          <button class="test-btn" onclick="testKey('groq')">Tester</button>
+        </div>
+        <label>Clé Gemini (aistudio.google.com)</label>
+        <div class="input-row">
+          <input type="password" id="settingsApiKey" placeholder="AIza..." />
+          <button class="test-btn" onclick="testKey('gemini')">Tester</button>
+        </div>
+        <label>URL Google Apps Script (Gmail + Agenda)</label>
+        <div class="input-row">
+          <input type="text" id="settingsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+          <button class="test-btn" onclick="testGmail()">Tester</button>
+        </div>
+        <div id="gmailResult" class="test-result"></div>
+        <label>Notion — clé dans le code Apps Script (ligne NOTION_KEY)</label>
+        <div class="input-row">
+          <span class="notion-hint">Colle ta clé dans google-apps-script.gs → ligne NOTION_KEY → Redéploie</span>
+          <button class="test-btn" onclick="testNotion()">Tester</button>
+        </div>
+        <div id="notionResult" class="test-result"></div>
+        <label>Mes objectifs principaux</label>
+        <input type="text" id="settingsGoals" placeholder="ex: créer une entreprise, lancer un produit, progresser en..." />
+        <label>Mes centres d'intérêt</label>
+        <input type="text" id="settingsInterests" placeholder="ex: business, design, musique, sport..." />
+        <div id="testResult" class="test-result"></div>
+        <div class="settings-actions">
+          <button onclick="saveSettingsPanel()">Sauvegarder</button>
+          <button class="btn-danger" onclick="clearMemory()">Effacer mémoire</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Holographic Visualization -->
+    <div class="holo-section">
+      <canvas id="holoCanvas"></canvas>
+    </div>
+
+    <!-- Conversation -->
+    <main class="conversation" id="conversation"></main>
+
+    <!-- Input -->
+    <footer class="input-area">
+      <div class="transcript-preview" id="transcriptPreview"></div>
+      <div class="controls">
+        <button class="mic-btn" id="micBtn" onclick="toggleListening()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span class="mic-label" id="micLabel">Parler</span>
+        </button>
+        <div class="text-row">
+          <input type="text" id="textInput" class="text-input"
+            placeholder="Ou écrivez votre message..."
+            onkeydown="if(event.key==='Enter') sendText()" />
+          <button class="send-btn" onclick="sendText()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
