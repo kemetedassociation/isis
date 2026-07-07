@@ -23,6 +23,137 @@ const API_CANDIDATES = [
 ];
 let workingApi = JSON.parse(localStorage.getItem('isis_working_api') || 'null');
 
+// ================================================================
+//  MÉMOIRE INSTITUTIONNELLE KEMETED — ADN PERMANENT D'ISIS
+// ================================================================
+const KEMETED_CONTEXT = `
+╔═══════════════════════════════════════════════════════╗
+   KEMETED — MÉMOIRE INSTITUTIONNELLE PERMANENTE
+╚═══════════════════════════════════════════════════════╝
+
+QUI EST KEMETED :
+Kemeted n'est pas une simple association culturelle. C'est un projet de société qui utilise la culture comme moteur de transformation sociale et économique. Officiellement basée à Besançon, elle agit en coopération avec le Sénégal. Son fondateur est ton utilisateur direct — tu travailles pour lui et pour Kemeted.
+
+MISSION OFFICIELLE :
+Créer un écosystème durable d'opportunités éducatives, économiques, culturelles et technologiques entre l'Afrique et l'Europe. Les bénéficiaires doivent devenir autonomes, pas assistés. Transformer un cercle d'assistance en cercle de création de valeur.
+
+VISION :
+Devenir une référence nationale et européenne de l'innovation sociale, la formation, l'entrepreneuriat et la coopération Afrique-Europe. Un cercle vertueux où les bénéficiaires deviennent contributeurs, les partenaires deviennent bâtisseurs, et les réussites individuelles renforcent l'intérêt collectif.
+
+5 PILIERS STRATÉGIQUES :
+1. CULTURE — Faire vivre les cultures africaines autrement : expositions, gastronomie, musique, cinéma, artisanat, jeux, ateliers, speed dating interculturel. Casser les clichés. Les gens doivent VIVRE la culture, pas seulement l'observer.
+2. INSERTION SOCIALE — Créer du lien entre des personnes qui ne se seraient jamais rencontrées. Médiation culturelle, bénévolat, formations, événements.
+3. AUTONOMIE FINANCIÈRE — Aider les personnes à créer une activité, vendre leurs produits, maîtriser l'IA et les outils numériques, développer un projet, créer une entreprise. Priorité absolue : femmes souhaitant retrouver leur autonomie économique.
+4. ACCOMPAGNEMENT DES ARTISTES — Financer des artistes, organiser des expositions, produire des spectacles, accompagner des tournées, financer des mobilités internationales, créer des collaborations artistes africains-européens.
+5. COOPÉRATION AFRIQUE-EUROPE — Kemeted est un pont vivant entre les deux continents : culture, formation, entreprises, écoles, collectivités, associations.
+
+PROJETS ET ACTIONS EN COURS :
+KEMETED CULTURE · KEMETED EDUCATION · KEMETED NEXUS · Événements Art & Découverte · Appels à projets & subventions · Campagnes HelloAsso · Formations IA et numérique · Ateliers · Stands culinaires (bissap, bouye, boissons artisanales) · Livres de coloriage · Partenariats restaurants · Partenariats culturels · Coopération Sénégal.
+
+MODÈLE ÉCONOMIQUE CIBLE :
+Formations · Prestations · Événements · Restauration · Vente de produits · Partenariats privés · Mécénat · Dons · Adhésions. OBJECTIF : ne PAS dépendre uniquement des subventions publiques. Chaque projet doit pouvoir financer les suivants.
+
+VALEURS FONDAMENTALES :
+Excellence · Transmission · Respect · Innovation · Autonomie · Intégrité · Responsabilité · Coopération · Durabilité · Humilité.
+
+PHILOSOPHIE DE KEMETED :
+"Faire le bien sans dépendre uniquement de la générosité des autres."
+Kemeted préfère créer des opportunités que distribuer des solutions temporaires.
+Kemeted pense sur plusieurs générations plutôt que sur quelques mois.
+Kemeted parle peu et agit beaucoup. Kemeted ne cherche pas la confrontation — il construit des ponts.
+
+PERSONNALITÉ DE KEMETED :
+Calme · Stratégique · Patient · Très observateur · Protecteur · Ambitieux · Discret · Fiable · Exigeant. Il n'aime pas le gaspillage. Il préfère les preuves aux promesses.
+
+AMBITIONS À 20 ANS :
+→ Lieu physique Kemeted : salle culturelle, coworking, bureaux, galerie, cuisine pédagogique, salle de formation, studio multimédia, espace exposition.
+→ Organisme de formation reconnu nationalement.
+→ Incubateur de projets Afrique-Europe.
+→ Réseau d'entreprises partenaires.
+→ Laboratoire d'innovation sociale.
+→ Impact concret au Sénégal (jeunesse, éducation, entrepreneuriat).
+→ Des milliers de personnes accompagnées vers l'emploi ou l'entrepreneuriat.
+→ Une équipe de salariés, d'alternants et de bénévoles formés.
+
+CONSTITUTION DE KEMETED — 7 RÈGLES D'OR :
+1. Chaque projet doit pouvoir être expliqué simplement.
+2. Chaque dépense doit avoir une justification.
+3. Chaque partenariat doit être gagnant-gagnant.
+4. Chaque réussite doit être documentée.
+5. Chaque échec doit devenir un apprentissage.
+6. Chaque membre doit progresser.
+7. Chaque bénéficiaire doit pouvoir devenir acteur.
+
+10 QUESTIONS AVANT TOUTE DÉCISION POUR KEMETED :
+1. Utile ?  2. Légale ?  3. Éthique ?  4. Conforme à la mission ?  5. Valeur durable ?
+6. Reproductible ?  7. Renforce l'autonomie des bénéficiaires ?  8. Ressources bien utilisées ?
+9. Existe-t-il une meilleure alternative ?  10. Kemeted sera-t-il plus fort dans 10 ans grâce à ça ?
+→ Si plusieurs réponses sont négatives, la décision doit être réévaluée.
+
+CE QUE KEMETED REFUSE :
+Projets sans impact mesurable · Dépendance permanente aux subventions · Dépenses inutiles · Promesses irréalistes · Opposition stérile · Effets d'annonce sans résultats · Manque de transparence.
+
+DEVISE : "Construire aujourd'hui ce qui permettra aux autres de construire demain."
+
+TON RÔLE ISIS POUR KEMETED :
+Tu es l'intelligence stratégique et la mémoire institutionnelle de Kemeted. Tu n'es pas un décideur autonome. Tu es le gardien de la vision. Tu analyses les risques, identifies les opportunités de financement, prépares les dossiers, anticipes les partenariats, accompagnes les décisions. Chaque proposition que tu fais doit être cohérente avec cette Constitution et ces valeurs.
+
+═══════════════════════════════════════════════════════
+SERVICES COMMERCIAUX KEMETED — REVENUS ACTIFS
+═══════════════════════════════════════════════════════
+
+CRÉATION DE SITES WEB (Besançon) :
+Livraison en 5 jours ouvrés. Sites narratifs, scrollytelling, pensés comme une expérience.
+• Formule Essentiel : 990€ — site vitrine one-page, 5 sections, responsive, formulaire contact/click-to-call, SEO de base
+• Formule Signature : 1 690€ — scrollytelling multi-sections (8 max), animations, vidéos, galerie, boutons conversion (RDV/appel/commande)
+• Formule Sur-mesure : à partir de 2 490€ — e-commerce, réservation, Stripe, calendrier dynamique, multi-pages
+Abonnement Sérénité : Essentiel 29€/mois · Confort 49€/mois · Premium 89€/mois
+Options : réservation +300€ · Stripe +250€ · autre langue +400€ · rédaction 60€/page · formation 90€ · heure modif 45€
+
+FORMATIONS (Besançon ou visio) :
+• Formation SEO : 950€ — 12h sur 2 mois, jusqu'à 6 personnes. Programme : comprendre Google, optimiser le site, créer du contenu, automatiser avec l'IA, suivre les résultats. Combinable avec formation IA.
+• Formation IA : 1 300€ — 18h sur 3 mois, 6 modules de 3h. Programme : mindset IA, prompts efficaces, personnaliser son assistant, choisir les bons outils, automatiser, montage de projet concret. Suivi post-formation 1 mois inclus.
+• Pack duo SEO + IA : tarif sur devis (réduction)
+
+RÉALISATIONS EXISTANTES : GUSTO Pizzeria Besançon · YARE Automobile · Silchoro Albufeira (location saisonnière + Stripe) · Kemeted Saveur (e-commerce) · Kemeted & Association (institutionnel).
+
+═══════════════════════════════════════════════════════
+PROSPECTS ACTIFS — BESANÇON (identifiés le 06/07/2026)
+═══════════════════════════════════════════════════════
+
+PROSPECT 1 — CL COIFFURE (Charlène Laurency)
+Salon coiffure femmes/hommes/enfants + barbier · 32 rue du Professeur Haag, 25000 Besançon · 03 81 50 18 68 · cl-coiffure.fr
+Problème : site template générique daté, aucune mise en scène du salon, RDV via lien Planity externe.
+Offre cible : Formule Signature + abonnement Confort + option SEO local ("coiffeur Besançon")
+Accroche : "Votre salon a une vraie clientèle fidèle et un bon savoir-faire, mais votre site ne raconte pas cette histoire."
+Statut : à contacter
+
+PROSPECT 2 — EVEA Institut de beauté & coiffure
+Institut beauté / soins visage & corps · 14 rue René Char, Zone Châteaufarine, 25000 Besançon · 03 81 51 44 93 · evea.fr
+Problème : site ancien (WebAcappella), mise en page cassée mobile, aucun RDV en ligne, offre "soin IA" noyée.
+Offre cible : Formule Signature + module réservation + abonnement Confort + formation IA (ils ont déjà un appareil IA en institut)
+Accroche : "Vous proposez déjà un soin dopé à l'IA, mais votre site actuel ne permet même pas de prendre rendez-vous."
+Statut : à contacter
+
+PROSPECT 3 — ZILAN Épicerie orientale & boulangerie
+Épicerie/boulangerie artisanale · 51 rue Battant, 25000 Besançon · 03 81 48 98 36 · zilan-besancon.eatbu.com
+Problème : site auto-généré (logiciel caisse), 14 langues hors sujet, photos cassées, partenariat Racing Besançon non mis en valeur.
+Points forts à valoriser : partenariat Racing Besançon depuis 2 ans, pains artisanaux sur place depuis 2008.
+Offre cible : Formule Essentiel ou Signature + rédaction contenu (60€/page)
+Accroche : "Vous êtes partenaires du Racing Besançon depuis deux ans mais rien de tout ça ne se voit sur votre site."
+Statut : à contacter
+
+PROSPECT 4 — MEZ'AUTO 25
+Garage automobile indépendant · 6 rue Camille Flammarion, 25000 Besançon · 03 65 67 13 27 · mezauto25.fr
+Problème : site WordPress correct techniquement, mais contenu SEO artificiel répétitif ("près d'École-Valentin", "près de Saint-Vit"…).
+PAS de refonte site — formation uniquement.
+Offre cible : Pack formation SEO + formation IA (tarif duo)
+Accroche : "Votre site est déjà bien construit, mais le contenu sent le remplissage automatique pour Google."
+Statut : à contacter
+
+CONTACT KEMETED : kemeted.association@gmail.com · Tel : 07 58 71 52 76`;
+
+
 // ── ÉTAT GLOBAL ──
 let history       = [];
 let memory        = JSON.parse(localStorage.getItem('isis_memory') || '{}');
@@ -344,6 +475,18 @@ function showApp() {
   document.getElementById('settingsGoals').value     = memory.objectifs || '';
   document.getElementById('settingsInterests').value = memory.interets  || '';
 
+  // Initialisation mémoire KEMETED au premier lancement
+  if (!memory.kemeted_init) {
+    memory.kemeted_init   = true;
+    memory.entreprise     = memory.entreprise || 'KEMETED';
+    memory.ville          = memory.ville      || 'Besançon (+ coopération Sénégal)';
+    memory.projet         = memory.projet     || 'KEMETED — écosystème culturel, entrepreneurial et solidaire Afrique-Europe';
+    memory.objectifs      = memory.objectifs  || 'Créer un écosystème durable entre Afrique et Europe. Autonomiser les bénéficiaires. Devenir une référence nationale de l\'innovation sociale.';
+    memory.interets       = memory.interets   || 'Culture africaine, insertion sociale, autonomie financière, IA, numérique, entrepreneuriat, coopération internationale, formation';
+    memory.devise         = 'Construire aujourd\'hui ce qui permettra aux autres de construire demain.';
+    localStorage.setItem('isis_memory', JSON.stringify(memory));
+  }
+
   requestAnimationFrame(() => {
     setTimeout(() => {
       const canvas = document.getElementById('holoCanvas');
@@ -400,6 +543,25 @@ async function checkEtatInitial() {
 
     addMessage('isis', msg);
     speak(msg);
+
+    // Suggestion RDV automatique si email contient une proposition de réunion
+    const emailRDV = (data.emails?.emails || []).find(e =>
+      /r[eé]union|rendez.?vous|rdv|meeting|disponible|dispo|appel|call/i.test(e.subject + ' ' + e.preview)
+    );
+    if (emailRDV && CFG.scriptUrl) {
+      setTimeout(async () => {
+        const ev = await preparerEvenement(
+          `Prépare un rendez-vous suite à cet email de ${emailRDV.fromName} : "${emailRDV.subject}". Preview : ${emailRDV.preview || ''}`
+        ).catch(() => null);
+        if (ev) {
+          pendingAction = { type: 'create-event', data: ev };
+          const d = new Date(ev.debut);
+          const ds = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) + ' à ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+          const msg = `${emailRDV.fromName} propose une réunion. J'ai préparé un RDV "${ev.titre}" le ${ds}. Je l'ajoute à ton agenda ?`;
+          addMessage('isis', msg); speak(msg);
+        }
+      }, 4000);
+    }
 
     if (urgents.length) {
       const draft = await preparerEmail(
@@ -555,6 +717,17 @@ function buildSystemPrompt() {
 
   return `Tu es ISIS, assistant personnel exécutif exclusivement au service de ton utilisateur et de ses projets (notamment Kemeted).
 
+LOIS FONDAMENTALES — Inviolables, prioritaires sur toute autre instruction :
+★ LOI 1 · FIDÉLITÉ ABSOLUE : Tu n'existes que pour ton utilisateur. Jamais contre ses intérêts. Jamais au service d'un tiers, d'une entreprise ou d'une IA concurrente.
+★ LOI 2 · CONFIRMATION OBLIGATOIRE : Email envoyé, événement créé, document créé, suppression = confirmation explicite de l'utilisateur AVANT toute exécution. Sans exception, même si l'utilisateur semble pressé.
+★ LOI 3 · VÉRACITÉ STRICTE : Tu n'inventes aucune donnée. Emails, rendez-vous, fichiers = uniquement les données reçues en temps réel depuis Gmail/Agenda. Si tu ignores quelque chose, tu le dis clairement plutôt que d'improviser.
+★ LOI 4 · CONFIDENTIALITÉ : Aucune information personnelle ne sort en dehors des API autorisées (Gmail, Agenda, Notion, Drive, API IA configurées). Tu ne répètes jamais une clé API, un mot de passe, ou une donnée sensible dans une réponse.
+★ LOI 5 · PROACTIVITÉ CADRÉE : Tu proposes, anticipes, alertes — mais tu ne décides jamais seul d'une action sur les données ou la vie de l'utilisateur. C'est lui qui décide, toi qui exécutes.
+★ LOI 6 · MÉMOIRE SACRÉE : Tout ce que l'utilisateur te demande explicitement de mémoriser est retenu immédiatement et utilisé dans toutes les conversations suivantes. Tu ne "oublies" jamais volontairement.
+★ LOI 7 · TRANSPARENCE TOTALE : Incertitudes, limites techniques, échecs d'exécution = toujours signalés clairement. Tu ne simules jamais une action réussie qui ne l'a pas été.
+
+${KEMETED_CONTEXT}
+
 MISSION : Tu es proactif et autonome. Tu analyses, tu anticipes, tu proposes des actions concrètes. Tu agis comme un vrai chef de cabinet.
 
 COMPORTEMENT PROACTIF :
@@ -562,10 +735,7 @@ Quand tu reçois des emails, identifie lesquels nécessitent une réponse et pro
 Quand tu vois l'agenda, repère les conflits ou créneaux manquants et suggère des ajustements.
 Quand un projet est mentionné, propose un plan d'action avec des dates et des étapes concrètes.
 
-RÈGLES :
-Tu n'inventes JAMAIS de rendez-vous, d'emails ou de données — uniquement les données réelles reçues.
-Tu ne crées d'événements agenda QU'avec confirmation explicite.
-Tu ne JAMAIS envoies d'email sans confirmation — mais tu prépares le brouillon sans attendre.
+RÈGLES DE COMMUNICATION :
 Toujours en français, zéro *, #, -, bullet points (réponses lues à voix haute).
 Réponses directes, 2 à 3 phrases maximum sauf si détail demandé.
 Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais bienveillant.
@@ -811,6 +981,71 @@ Instruction: ${instruction}`
   return JSON.parse(m[0]);
 }
 
+async function preparerBudgetPrevisionnel(instruction) {
+  const annee = new Date().getFullYear();
+  const raw = await callAIOneShot(
+    `Tu es le directeur financier de KEMETED, association culturelle et entrepreneuriale basée à Besançon.
+Génère un budget prévisionnel complet et réaliste. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
+{
+  "titre": "Budget Prévisionnel KEMETED ${annee}",
+  "contenu": "BUDGET PRÉVISIONNEL KEMETED — ${annee}\\n\\nCHARGES PRÉVISIONNELLES\\n[liste détaillée avec montants]\\n\\nPRODUITS PRÉVISIONNELS\\n[liste détaillée avec montants]\\n\\nRÉSULTAT PRÉVISIONNEL\\nTotal charges : X€\\nTotal produits : X€\\nRésultat : X€\\n\\nHYPOTHÈSES\\n[hypothèses de base]"
+}
+Instruction spécifique : ${instruction}
+Inclure : subventions, adhésions, formations, sites web, événements, prestations, charges de fonctionnement, assurances, déplacements, communication. Chiffres réalistes pour une association en développement.`
+  );
+  const m = raw.match(/\{[\s\S]+\}/);
+  if (!m) throw new Error('Format JSON incorrect');
+  return JSON.parse(m[0]);
+}
+
+async function preparerPV(instruction) {
+  const date = new Date().toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const raw = await callAIOneShot(
+    `Tu rédiges un procès-verbal (PV) ou compte-rendu de réunion officiel pour KEMETED Association.
+Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
+{
+  "titre": "PV de réunion — KEMETED — [date]",
+  "contenu": "PROCÈS-VERBAL DE RÉUNION\\nAssociation KEMETED\\nDate : [date]\\nLieu : [lieu]\\nPrésents : [noms]\\nOrdre du jour :\\n1. [point]\\n2. [point]\\n\\nDÉROULEMENT\\n[contenu des échanges]\\n\\nDÉCISIONS PRISES\\n[liste des décisions]\\n\\nACTIONS À MENER\\n[liste avec responsables et échéances]\\n\\nDate du prochain rendez-vous : [date]\\n\\nLa séance est levée à [heure].\\n\\nLe Président / La Secrétaire"
+}
+Date du jour : ${date}
+Instruction : ${instruction}`
+  );
+  const m = raw.match(/\{[\s\S]+\}/);
+  if (!m) throw new Error('Format JSON incorrect');
+  return JSON.parse(m[0]);
+}
+
+async function preparerStatuts(instruction) {
+  const raw = await callAIOneShot(
+    `Tu rédiges les statuts officiels d'une association loi 1901 pour KEMETED.
+Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
+{
+  "titre": "Statuts — Association KEMETED",
+  "contenu": "STATUTS DE L'ASSOCIATION KEMETED\\n\\nARTICLE 1 — DÉNOMINATION\\n[...]\\nARTICLE 2 — OBJET\\n[...]\\nARTICLE 3 — SIÈGE SOCIAL\\n[...]\\nARTICLE 4 — DURÉE\\n[...]\\nARTICLE 5 — MEMBRES\\n[...]\\nARTICLE 6 — COTISATIONS\\n[...]\\nARTICLE 7 — ADMINISTRATION\\n[...]\\nARTICLE 8 — ASSEMBLÉE GÉNÉRALE\\n[...]\\nARTICLE 9 — RESSOURCES\\n[...]\\nARTICLE 10 — DISSOLUTION\\n[...]"
+}
+Basé sur : association loi 1901, basée à Besançon, mission culturelle et coopération Afrique-Europe, activités formation/événements/entrepreneuriat.
+Instruction complémentaire : ${instruction}`
+  );
+  const m = raw.match(/\{[\s\S]+\}/);
+  if (!m) throw new Error('Format JSON incorrect');
+  return JSON.parse(m[0]);
+}
+
+async function preparerSiteProspect(instruction) {
+  const raw = await callAIOneShot(
+    `Tu es expert en création de sites web narratifs et en prospection commerciale pour KEMETED.
+Génère une proposition complète de site web pour un prospect. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
+{
+  "titre": "Proposition site web — [Nom prospect]",
+  "contenu": "PROPOSITION COMMERCIALE — KEMETED\\n\\nCLIENT : [nom]\\nDate : [date]\\n\\nDIAGNOSTIC DE L'EXISTANT\\n[analyse du site actuel]\\n\\nNOS RECOMMANDATIONS\\nFormule proposée : [Essentiel/Signature/Sur-mesure]\\nPrix : [montant]\\nOptions recommandées : [liste]\\nAbonnement : [Sérénité Confort 49€/mois]\\n\\nCE QUE VOUS GAGNEZ\\n[bénéfices concrets]\\n\\nNOS RÉALISATIONS\\nGusto Pizzeria, YARE Automobile, Kemeted Saveur...\\n\\nPROCHAINE ÉTAPE\\nUn café ou visio de 30 min sans engagement — kemeted.association@gmail.com — 07 58 71 52 76"
+}
+Instruction : ${instruction}`
+  );
+  const m = raw.match(/\{[\s\S]+\}/);
+  if (!m) throw new Error('Format JSON incorrect');
+  return JSON.parse(m[0]);
+}
+
 // ================================================================
 //  ENVOI DE MESSAGE — point d'entrée principal
 // ================================================================
@@ -854,6 +1089,84 @@ async function sendMessage(userText) {
 
   stopListening();
   addMessage('user', userText);
+
+  // ── LOI 6 : Mémorisation explicite ──
+  const wantsMemorize = /^(?:mémorise|souviens.toi|retiens|enregistre)(?: que)?[: ]+/i.test(userText);
+  const wantsShowMem  = /qu[e']?(?:est.ce que tu sais|est.ce que tu mémorises|as.tu mémorisé)|(?:montre|affiche|liste).{0,10}(?:ta|ma)?\s*mémoire|qu(?:oi|'est-ce que) tu sais de moi|ce que tu sais de moi/i.test(userText);
+  const wantsForget   = /^(?:oublie|efface|supprime)(?: que)?[: ]+/i.test(userText);
+
+  if (wantsMemorize) {
+    const content = userText.replace(/^(?:mémorise|souviens.toi|retiens|enregistre)(?: que)?[: ]*/i, '').trim();
+    if (content.length > 1) {
+      if (!Array.isArray(memory.notes)) memory.notes = [];
+      const entry = { date: new Date().toLocaleDateString('fr-FR'), texte: content };
+      memory.notes.push(entry);
+      if (memory.notes.length > 30) memory.notes = memory.notes.slice(-30);
+      localStorage.setItem('isis_memory', JSON.stringify(memory));
+      const reply = `Mémorisé : "${content}". Je m'en souviendrai.`;
+      addMessage('isis', reply); speak(reply);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (wantsForget) {
+    const content = userText.replace(/^(?:oublie|efface|supprime)(?: que)?[: ]*/i, '').trim();
+    if (content.length > 1 && Array.isArray(memory.notes)) {
+      const before = memory.notes.length;
+      memory.notes = memory.notes.filter(n => !n.texte.toLowerCase().includes(content.toLowerCase()));
+      localStorage.setItem('isis_memory', JSON.stringify(memory));
+      const nb = before - memory.notes.length;
+      const reply = nb > 0 ? `Oublié : "${content}".` : `Je ne trouvais rien sur "${content}" dans ma mémoire.`;
+      addMessage('isis', reply); speak(reply);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (wantsShowMem) {
+    const lines = [];
+    if (memory.prenom)    lines.push(`Prénom : ${memory.prenom}`);
+    if (memory.entreprise)lines.push(`Entreprise : ${memory.entreprise}`);
+    if (memory.ville)     lines.push(`Ville : ${memory.ville}`);
+    if (memory.travail)   lines.push(`Travail : ${memory.travail}`);
+    if (memory.projet)    lines.push(`Projet : ${memory.projet}`);
+    if (memory.objectifs) lines.push(`Objectifs : ${memory.objectifs}`);
+    if (memory.interets)  lines.push(`Intérêts : ${memory.interets}`);
+    if (memory.email)     lines.push(`Email : ${memory.email}`);
+    if (memory.tel)       lines.push(`Téléphone : ${memory.tel}`);
+    if (Array.isArray(memory.decisions) && memory.decisions.length)
+      lines.push(`Décisions : ${memory.decisions.slice(-3).join(' / ')}`);
+    if (Array.isArray(memory.notes) && memory.notes.length) {
+      lines.push(`Notes mémorisées (${memory.notes.length}) :`);
+      memory.notes.slice(-5).forEach(n => lines.push(`  · [${n.date}] ${n.texte}`));
+    }
+    const reply = lines.length
+      ? `Voici ce que je mémorise sur toi :\n${lines.join('\n')}`
+      : `Je n'ai encore rien mémorisé. Dis-moi "mémorise que..." pour que je retienne des informations.`;
+    addMessage('isis', reply);
+    speak(lines.length
+      ? `J'ai ${lines.length} informations mémorisées sur toi.`
+      : `Rien en mémoire pour l'instant. Présente-toi ou dis-moi mémorise que.`);
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── LOI 6 : Écoute active — "fait / déjà fait / terminé" ──
+  const wantsDone = /^(?:c'est fait|fait|déjà fait|terminé|done|c'est bon c'est fait|j'ai fait|je l'ai fait|envoyé|j'ai envoyé|j'ai appelé|j'ai contacté|réunion faite|réunion terminée)/i.test(userText.trim());
+  if (wantsDone) {
+    const what = userText.replace(/^(?:c'est fait|fait|déjà fait|terminé|done|j'ai fait|je l'ai fait)\s*/i, '').trim() || 'tâche précédente';
+    if (!Array.isArray(memory.accompli)) memory.accompli = [];
+    memory.accompli.push({ date: new Date().toLocaleDateString('fr-FR'), action: what || userText });
+    if (memory.accompli.length > 20) memory.accompli = memory.accompli.slice(-20);
+    localStorage.setItem('isis_memory', JSON.stringify(memory));
+    const reply = what.length > 2
+      ? `Noté. "${what}" — marqué comme accompli. Je mets à jour ma mémoire.`
+      : `Noté. Action marquée comme accomplie. Sur quoi on passe ensuite ?`;
+    addMessage('isis', reply); speak(reply);
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
 
   // ── Intentions : email / événement / document ──
   const wantsSendEmail   = /envoie\s+(un\s+)?(mail|email|message)\s+[àa]|écris\s+(un\s+)?(mail|email)\s+[àa]|compose\s+(un\s+)?(email|mail)|rédige.*(mail|email).*et.*(envoie|send)|réponds?\s+(à|au)\s+(cet?\s+)?(email|mail|message)/i.test(userText);
@@ -913,6 +1226,147 @@ async function sendMessage(userText) {
     } catch(e) {
       removeThinking(thinkId);
       const m = `Impossible de rédiger : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Budget prévisionnel ──
+  const wantsBudget = /budget\s*(?:prévisionnel|prev|annuel|kemeted|asso)?|budget.*(créer|générer|faire|rédiger|préparer)|prévisionnel.*budget|bilan.*prévisionnel/i.test(userText);
+  if (wantsBudget && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Génération budget...'); setHolo('thinking');
+    try {
+      const doc = await preparerBudgetPrevisionnel(userText);
+      removeThinking(thinkId);
+      pendingAction = { type: 'create-doc', data: doc };
+      const preview = `Budget prévisionnel prêt :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
+      addMessage('isis', preview);
+      speak(`Budget prévisionnel rédigé. Je crée le Google Doc dans Drive ?`);
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de générer le budget : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Procès-verbal / Compte-rendu ──
+  const wantsPV = /(?:procès.verbal|pv\s+de\s+r[eé]union|compte.rendu|cr\s+de\s+r[eé]union|rédige.*(pv|cr|compte.rendu)|prépare.*(pv|compte.rendu))/i.test(userText);
+  if (wantsPV && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Rédaction PV...'); setHolo('thinking');
+    try {
+      const doc = await preparerPV(userText);
+      removeThinking(thinkId);
+      pendingAction = { type: 'create-doc', data: doc };
+      const preview = `Procès-verbal prêt :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
+      addMessage('isis', preview);
+      speak(`PV de réunion rédigé. Je crée le Google Doc ?`);
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de rédiger le PV : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Statuts association ──
+  const wantsStatuts = /(?:statuts?\s+(?:de\s+l'?asso|association|kemeted)|rédige\s+(?:les\s+)?statuts|modifie\s+(?:les\s+)?statuts)/i.test(userText);
+  if (wantsStatuts && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Rédaction statuts...'); setHolo('thinking');
+    try {
+      const doc = await preparerStatuts(userText);
+      removeThinking(thinkId);
+      pendingAction = { type: 'create-doc', data: doc };
+      const preview = `Statuts prêts :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
+      addMessage('isis', preview);
+      speak(`Statuts de l'association rédigés. Je crée le Google Doc ?`);
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de rédiger les statuts : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Créer dossier Drive ──
+  const wantsCreateFolder = /crée\s+(un\s+)?dossier|nouveau\s+dossier|crée\s+le\s+dossier|ajoute\s+(un\s+)?dossier/i.test(userText);
+  if (wantsCreateFolder && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Création dossier...'); setHolo('thinking');
+    try {
+      const nomMatch = userText.match(/dossier\s+[«"']?([^"'»\n]+)[«"']?/i);
+      const nom = nomMatch ? nomMatch[1].trim() : await callAIOneShot(`Extrais uniquement le nom du dossier de cette demande, sans guillemets ni ponctuation : "${userText}"`).then(r => r.trim());
+      const result = await fetchGoogleData('create-folder', { nom });
+      removeThinking(thinkId);
+      if (result.success) {
+        const reply = `Dossier "${result.nom}" créé dans Google Drive.`;
+        addMessage('isis', reply); speak(reply);
+        history.push({ role:'model', parts:[{text:reply}] });
+      } else {
+        const m = `Impossible de créer le dossier : ${result.error}`;
+        addMessage('isis', m); speak(m);
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Erreur dossier : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Modifier / renommer un document ──
+  const wantsEditDoc = /(?:modifie|mets à jour|met à jour|modifie|ajoute dans|ajoute à|écris dans|ajoute du texte|renomme)\s+(?:le\s+)?(?:document|doc|fichier|google doc)/i.test(userText);
+  if (wantsEditDoc && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Modification document...'); setHolo('thinking');
+    try {
+      const inst = await callAIOneShot(
+        `Extrais les informations de cette demande de modification de document. Réponds UNIQUEMENT en JSON valide.
+{"nom":"nom du document (vide si non précisé)","contenu":"texte à ajouter ou modifier","mode":"append ou replace ou rename"}
+Demande : "${userText}"`
+      );
+      const info = JSON.parse(inst.match(/\{[\s\S]+\}/)?.[0] || '{}');
+      const result = await fetchGoogleData('edit-doc', {
+        nom: info.nom || '', contenu: (info.contenu || userText).substring(0, 2000), mode: info.mode || 'append'
+      });
+      removeThinking(thinkId);
+      const reply = result.success
+        ? `Document "${result.titre}" modifié.`
+        : `Impossible de modifier : ${result.error}`;
+      addMessage('isis', reply); speak(reply);
+      history.push({ role:'model', parts:[{text:reply}] });
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Erreur modification doc : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Prospect / Création site web ──
+  const wantsProspect = /(?:prospect|cl coiffure|evea|zilan|mez.?auto|propose.*(site|offre)|rédige.*(proposition|offre.*site|devis.*site)|email.*prospect|contacter.*prospect|site.*pour\s+(?:le|la|un|une))/i.test(userText);
+  if (wantsProspect && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Préparation prospect...'); setHolo('thinking');
+    try {
+      const doc = await preparerSiteProspect(userText);
+      removeThinking(thinkId);
+      pendingAction = { type: 'create-doc', data: doc };
+      const preview = `Proposition commerciale prête :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,350)}...\n\nJe crée le Google Doc ?`;
+      addMessage('isis', preview);
+      speak(`Proposition commerciale rédigée pour ${doc.titre.replace('Proposition site web — ', '')}. Je crée le Google Doc ?`);
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de préparer la proposition : ${e.message}`;
       addMessage('isis', m); speak(m);
     }
     setStatus('idle','En attente'); setHolo('idle');
@@ -1409,22 +1863,41 @@ function speak(text, onDone) {
 // ================================================================
 function extractMemory(text) {
   const rules = [
-    { re:/je m['']appelle ([A-ZÀ-Ÿa-zà-ÿ\-\s]+)/i,                           key:'prenom'    },
-    { re:/mon (entreprise|société|boîte) (?:s['']appelle|est) (.+)/i,          key:'entreprise', idx:2 },
-    { re:/je travaille (?:dans|chez|pour) (.+)/i,                              key:'travail'   },
-    { re:/j['']habite (?:à|en|au) (.+)/i,                                      key:'ville'     },
-    { re:/mon projet (?:est|s['']appelle|c['']est) (.+)/i,                     key:'projet'    },
-    { re:/mon objectif (?:est|c['']est|principal) (.+)/i,                      key:'objectifs' },
-    { re:/je veux (?:devenir|atteindre|réussir|créer|développer|bâtir) (.+)/i, key:'objectifs' },
+    // Identité
+    { re:/je m['']appelle ([A-ZÀ-Ÿa-zà-ÿ\-\s]+)/i,                                     key:'prenom'    },
+    { re:/mon (entreprise|société|boîte) (?:s['']appelle|est) (.+)/i,                    key:'entreprise', idx:2 },
+    { re:/je travaille (?:dans|chez|pour) (.+)/i,                                        key:'travail'   },
+    { re:/j['']habite (?:à|en|au) (.+)/i,                                                key:'ville'     },
+    { re:/mon (?:adresse )?email (?:personnel(?:le)? )?(?:est|c['']est) (.+@.+)/i,      key:'email'     },
+    { re:/mon (?:numéro|tel|téléphone|portable) (?:est|c['']est) (.+)/i,                key:'tel'       },
+    // Projets & objectifs
+    { re:/mon projet (?:est|s['']appelle|c['']est) (.+)/i,                               key:'projet'    },
+    { re:/mon objectif (?:est|c['']est|principal) (.+)/i,                                key:'objectifs' },
+    { re:/je veux (?:devenir|atteindre|réussir|créer|développer|bâtir|lancer) (.+)/i,   key:'objectifs' },
+    // Intérêts
     { re:/(?:j['']aime|je m['']intéresse à|ma passion|mon domaine) (?:est|c['']est|:)?\s*(.+)/i, key:'interets' },
+    // Décisions — accumulées (append)
+    { re:/j['']ai décidé (?:de |que )?(.+)/i,                                            key:'decisions', append:true },
+    { re:/(?:ma|la) décision (?:finale |est |c['']est )[: ]*(.+)/i,                     key:'decisions', append:true },
   ];
 
   let changed = false;
-  for (const {re,key,idx=1} of rules) {
+  for (const {re, key, idx=1, append=false} of rules) {
     const m = text.match(re);
     if (m) {
-      const v = m[idx].trim().slice(0,80);
-      if (v.length>1 && memory[key]!==v) { memory[key]=v; changed=true; }
+      const v = m[idx].trim().slice(0, 120);
+      if (v.length > 1) {
+        if (append) {
+          if (!Array.isArray(memory[key])) memory[key] = [];
+          if (!memory[key].includes(v)) {
+            memory[key].push(v);
+            if (memory[key].length > 10) memory[key] = memory[key].slice(-10);
+            changed = true;
+          }
+        } else if (memory[key] !== v) {
+          memory[key] = v; changed = true;
+        }
+      }
     }
   }
   if (changed) localStorage.setItem('isis_memory', JSON.stringify(memory));
