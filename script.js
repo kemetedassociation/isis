@@ -1,7 +1,7 @@
 // ================================================================
-//  ISIS — ASSISTANT PERSONNEL PROACTIF
+//  ISIS — ASSISTANT PERSONNEL PROACTIF  v3.0
 //  IA : Claude → OpenAI → Groq → Gemini (cascade)
-//  Voix : Web Speech API optimisée
+//  Voix : Web Speech API optimisée iOS + Android
 // ================================================================
 
 // ── CONFIGURATION ──
@@ -13,12 +13,10 @@ const CFG = {
   scriptUrl : localStorage.getItem('isis_script_url')  || '',
 };
 
-// Ordre de tentative — ISIS essaie chacun jusqu'à ce qu'un fonctionne
 const API_CANDIDATES = [
   { version:'v1beta', model:'gemini-1.5-flash-latest'    },
   { version:'v1beta', model:'gemini-1.5-flash-001'       },
   { version:'v1beta', model:'gemini-1.5-flash-8b-latest' },
-  { version:'v1beta', model:'gemini-1.5-flash-8b-001'    },
   { version:'v1',     model:'gemini-1.5-flash'            },
   { version:'v1beta', model:'gemini-1.5-pro-latest'      },
   { version:'v1beta', model:'gemini-pro'                 },
@@ -31,12 +29,11 @@ let memory        = JSON.parse(localStorage.getItem('isis_memory') || '{}');
 let isListening   = false;
 let isSpeaking    = false;
 let recognition   = null;
-let voices        = [];
 let audioStream   = null;
 let holoViz       = null;
 let convMode      = false;
 let listenPhase   = 'idle';
-let pendingAction = null;    // action en attente de confirmation
+let pendingAction = null;
 
 // ================================================================
 //  ANIMATION HOLOGRAPHIQUE
@@ -77,10 +74,9 @@ class HoloViz {
       this.analyser.fftSize = 256;
       this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
       ac.createMediaStreamSource(stream).connect(this.analyser);
-    } catch(e) { /* audio viz not critical */ }
+    } catch(e) {}
   }
 
-  // Couleur selon état
   col(a=1) {
     const map = {
       idle     : `rgba(0,200,255,${a*.35})`,
@@ -110,11 +106,9 @@ class HoloViz {
     const {ctx,c,cx,cy,t,state} = this;
     const W = c.width, H = c.height;
 
-    // Fond
     ctx.fillStyle = 'rgba(8,13,26,.96)';
     ctx.fillRect(0,0,W,H);
 
-    // Grille
     ctx.strokeStyle = this.col(.08);
     ctx.lineWidth = .5;
     ctx.setLineDash([]);
@@ -122,7 +116,6 @@ class HoloViz {
     for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-    // Particules
     for(const p of this.particles){
       p.x = (p.x+p.vx+1)%1; p.y = (p.y+p.vy+1)%1;
       ctx.beginPath();
@@ -133,7 +126,6 @@ class HoloViz {
 
     const maxR = Math.min(cy-8, W*.22);
 
-    // ── Anneaux rotatifs ──
     const rings = [
       {r:maxR,    speed:.20, dash:[4,14], w:1,   op:.45},
       {r:maxR*.76,speed:-.35,dash:[8,6],  w:1.5, op:.60},
@@ -153,7 +145,6 @@ class HoloViz {
       ctx.stroke();
       ctx.restore();
 
-      // Segments d'arc HUD
       ctx.save();
       ctx.translate(cx,cy);
       ctx.rotate(-t*rg.speed*.5);
@@ -169,7 +160,6 @@ class HoloViz {
       ctx.restore();
     }
 
-    // ── Scanning (thinking) ──
     if(state==='thinking'){
       const sa = t*2.5;
       ctx.save();
@@ -188,16 +178,10 @@ class HoloViz {
       ctx.restore();
     }
 
-    // ── Forme d'onde ──
     this._drawWave(cx, cy, maxR*.62);
-
-    // ── Noyau central ──
     this._drawCore(cx, cy, maxR*.2);
-
-    // ── Coins HUD ──
     this._drawCorners(W,H);
 
-    // ── Texte HUD ──
     ctx.setLineDash([]);
     const hudText = {idle:'SYSTÈME EN VEILLE',listening:'● ÉCOUTE ACTIVE',thinking:'◌ ANALYSE EN COURS',speaking:'▶ ISIS EN LIGNE'};
     ctx.fillStyle = this.colSolid(.65);
@@ -210,7 +194,7 @@ class HoloViz {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillStyle = this.colSolid(.25);
-    ctx.fillText('ISIS v2.0', 18, H-8);
+    ctx.fillText('ISIS v3.0', 18, H-8);
   }
 
   _drawWave(cx, cy, r) {
@@ -235,7 +219,6 @@ class HoloViz {
                Math.sin(t*speed*1.6+i*.35)*r*mult*.5);
       }
 
-      // Lissage
       this.waveCache[i] = this.waveCache[i]*.6 + amp*.4;
       const rad = r + this.waveCache[i];
       const x = cx + Math.cos(angle)*rad;
@@ -260,7 +243,6 @@ class HoloViz {
     const pulse = 1 + .07*Math.sin(t*2.5);
     const rp = r*pulse;
 
-    // Halo
     const halo = ctx.createRadialGradient(cx,cy,0,cx,cy,rp*3.2);
     halo.addColorStop(0, this.col(.3));
     halo.addColorStop(1, this.col(0));
@@ -269,7 +251,6 @@ class HoloViz {
     ctx.fillStyle = halo;
     ctx.fill();
 
-    // Cercle
     ctx.beginPath();
     ctx.arc(cx,cy,rp,0,Math.PI*2);
     const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,rp);
@@ -283,7 +264,6 @@ class HoloViz {
     ctx.setLineDash([]);
     ctx.stroke();
 
-    // Texte
     const txt = {idle:'ISIS',listening:'ÉCOUTE',thinking:'...',speaking:'ISIS'};
     ctx.fillStyle = this.colSolid(1);
     ctx.font = `bold ${Math.max(9,rp*.48)}px "Segoe UI",sans-serif`;
@@ -310,12 +290,9 @@ class HoloViz {
 //  INITIALISATION
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // BUG FIX : voix chargées de manière asynchrone sur Chrome — on attend l'événement
-  const loadVoices = () => { voices = window.speechSynthesis.getVoices(); };
-  loadVoices();
-  window.speechSynthesis.onvoiceschanged = loadVoices;
+  if (window.speechSynthesis) window.speechSynthesis.getVoices();
 
-  // Détection iOS — Safari ne supporte pas SpeechRecognition
+  // Détection iOS — Safari ne supporte pas SpeechRecognition (streaming)
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (isIOS) {
     document.getElementById('micBtn').style.display = 'none';
@@ -323,8 +300,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('textInput').placeholder = 'Écrivez votre message à ISIS...';
   }
 
-  const hasKey = localStorage.getItem('isis_groq_key') || localStorage.getItem('isis_api_key')
-               || localStorage.getItem('isis_claude_key') || localStorage.getItem('isis_openai_key');
+  // Gestion clavier mobile — redimensionne l'app quand le clavier s'ouvre
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const app = document.getElementById('app');
+      if (app && app.style.display !== 'none') {
+        app.style.height = window.visualViewport.height + 'px';
+        setTimeout(() => {
+          const conv = document.getElementById('conversation');
+          if (conv) conv.scrollTop = conv.scrollHeight;
+        }, 100);
+      }
+    });
+  }
+
+  // Scroll au bas quand le clavier s'ouvre sur mobile
+  document.getElementById('textInput').addEventListener('focus', () => {
+    setTimeout(() => {
+      const conv = document.getElementById('conversation');
+      if (conv) conv.scrollTop = conv.scrollHeight;
+    }, 400);
+  });
+
+  // FIX : vérifie toutes les 4 clés possibles, pas seulement Groq/Gemini
+  const hasKey = CFG.claudeKey || CFG.openaiKey || CFG.groqKey || CFG.apiKey;
   if (hasKey && hasKey.length > 8) {
     showApp();
   } else {
@@ -337,16 +336,14 @@ function showApp() {
   const app = document.getElementById('app');
   app.style.display = 'flex';
 
-  // Pré-remplit les paramètres
-  document.getElementById('settingsClaudeKey').value = localStorage.getItem('isis_claude_key')  || '';
-  document.getElementById('settingsOpenaiKey').value = localStorage.getItem('isis_openai_key')  || '';
-  document.getElementById('settingsGroqKey').value   = localStorage.getItem('isis_groq_key')    || '';
-  document.getElementById('settingsApiKey').value    = localStorage.getItem('isis_api_key')     || '';
-  document.getElementById('settingsScriptUrl').value = localStorage.getItem('isis_script_url')  || '';
+  document.getElementById('settingsClaudeKey').value = CFG.claudeKey;
+  document.getElementById('settingsOpenaiKey').value = CFG.openaiKey;
+  document.getElementById('settingsGroqKey').value   = CFG.groqKey;
+  document.getElementById('settingsApiKey').value    = CFG.apiKey;
+  document.getElementById('settingsScriptUrl').value = CFG.scriptUrl;
   document.getElementById('settingsGoals').value     = memory.objectifs || '';
   document.getElementById('settingsInterests').value = memory.interets  || '';
 
-  // BUG FIX : attendre que le DOM soit peint avant d'accéder à offsetWidth du canvas
   requestAnimationFrame(() => {
     setTimeout(() => {
       const canvas = document.getElementById('holoCanvas');
@@ -354,31 +351,35 @@ function showApp() {
     }, 80);
   });
 
-  // Salutation
   const h = new Date().getHours();
   const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  const intro = `${greet}. ISIS en ligne. Je vérifie ta situation immédiatement.`;
+  const intro = `${greet}. ISIS en ligne. Je vérifie ta situation.`;
   addMessage('isis', intro);
   setTimeout(() => speak(intro, () => checkEtatInitial()), 800);
 }
 
-// ── SETUP / PARAMÈTRES ──
+// ── SETUP INITIAL ──
 function saveSetup() {
-  const groqKey = document.getElementById('setupGroqKey').value.trim();
-  const gemKey  = document.getElementById('setupApiKey').value.trim();
-  const url     = document.getElementById('setupScriptUrl').value.trim();
+  const claudeKey = document.getElementById('setupClaudeKey')?.value.trim() || '';
+  const openaiKey = document.getElementById('setupOpenaiKey')?.value.trim() || '';
+  const groqKey   = document.getElementById('setupGroqKey').value.trim();
+  const gemKey    = document.getElementById('setupApiKey')?.value.trim() || '';
+  const url       = document.getElementById('setupScriptUrl').value.trim();
 
-  if (!groqKey && !gemKey) {
-    alert('Entrez au moins une clé API.\nRecommandé : Groq (console.groq.com — gratuit en France)');
+  if (!claudeKey && !openaiKey && !groqKey && !gemKey) {
+    alert('Entre au moins une clé API.\nRecommandé : Claude (console.anthropic.com) ou Groq (console.groq.com — gratuit)');
     return;
   }
 
-  if (groqKey) { CFG.groqKey = groqKey; localStorage.setItem('isis_groq_key', groqKey); }
-  if (gemKey)  { CFG.apiKey  = gemKey;  localStorage.setItem('isis_api_key', gemKey); }
-  if (url)     { CFG.scriptUrl = url;   localStorage.setItem('isis_script_url', url); }
+  if (claudeKey) { CFG.claudeKey = claudeKey; localStorage.setItem('isis_claude_key', claudeKey); }
+  if (openaiKey) { CFG.openaiKey = openaiKey; localStorage.setItem('isis_openai_key', openaiKey); }
+  if (groqKey)   { CFG.groqKey   = groqKey;   localStorage.setItem('isis_groq_key',   groqKey);   }
+  if (gemKey)    { CFG.apiKey    = gemKey;     localStorage.setItem('isis_api_key',    gemKey);    }
+  if (url)       { CFG.scriptUrl = url;        localStorage.setItem('isis_script_url', url);       }
   showApp();
 }
 
+// ── CHECK PROACTIF AU DÉMARRAGE ──
 async function checkEtatInitial() {
   if (!CFG.scriptUrl) return;
   try {
@@ -390,7 +391,7 @@ async function checkEtatInitial() {
     let msg = '';
     if (urgents.length) {
       msg += `Tu as ${urgents.length} email${urgents.length>1?'s':''} important${urgents.length>1?'s':''} — `;
-      msg += urgents.map(e => `${e.fromName} sur "${e.subject}"`).join(' et ') + '. ';
+      msg += urgents.map(e => `${e.fromName} au sujet de "${e.subject}"`).join(' et ') + '. ';
     }
     if (rdvAuj.length) {
       msg += `${rdvAuj.length} rendez-vous aujourd'hui : ${rdvAuj.map(e=>e.titre).join(', ')}. `;
@@ -407,10 +408,13 @@ async function checkEtatInitial() {
       if (draft) {
         pendingAction = { type: 'send-email', data: draft };
         const preview = `Brouillon prêt :\nÀ : ${draft.to}\nObjet : RE: ${draft.subject}\n\n${draft.body}\n\nJe l'envoie ?`;
-        setTimeout(() => { addMessage('isis', preview); speak(`Brouillon de réponse prêt pour ${urgents[0].fromName}. Je l'envoie ?`); }, 2000);
+        setTimeout(() => {
+          addMessage('isis', preview);
+          speak(`Brouillon de réponse prêt pour ${urgents[0].fromName}. Je l'envoie ?`);
+        }, 2000);
       }
     }
-  } catch(e) { /* silence */ }
+  } catch(e) {}
 }
 
 function toggleSettings() {
@@ -419,30 +423,31 @@ function toggleSettings() {
 }
 
 function saveSettingsPanel() {
-  const groqKey = document.getElementById('settingsGroqKey').value.trim();
-  const gemKey  = document.getElementById('settingsApiKey').value.trim();
-  const url     = document.getElementById('settingsScriptUrl').value.trim();
-
   const claudeKey = document.getElementById('settingsClaudeKey').value.trim();
   const openaiKey = document.getElementById('settingsOpenaiKey').value.trim();
+  const groqKey   = document.getElementById('settingsGroqKey').value.trim();
+  const gemKey    = document.getElementById('settingsApiKey').value.trim();
+  const url       = document.getElementById('settingsScriptUrl').value.trim();
+
   if (claudeKey) { CFG.claudeKey = claudeKey; localStorage.setItem('isis_claude_key', claudeKey); }
   if (openaiKey) { CFG.openaiKey = openaiKey; localStorage.setItem('isis_openai_key', openaiKey); }
   if (groqKey)   { CFG.groqKey   = groqKey;   localStorage.setItem('isis_groq_key',   groqKey);   }
   if (gemKey)    { CFG.apiKey    = gemKey;     localStorage.setItem('isis_api_key',    gemKey);    }
+
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
   else localStorage.removeItem('isis_script_url');
 
   const goals     = document.getElementById('settingsGoals').value.trim();
   const interests = document.getElementById('settingsInterests').value.trim();
-  if (goals)     { memory.objectifs = goals;    }
-  if (interests) { memory.interets  = interests; }
+  if (goals)     memory.objectifs = goals;
+  if (interests) memory.interets  = interests;
   if (goals || interests) localStorage.setItem('isis_memory', JSON.stringify(memory));
 
   workingApi = null;
   localStorage.removeItem('isis_working_api');
   toggleSettings();
-  addMessage('isis', 'Paramètres mis à jour. Je les prends en compte dès maintenant.');
+  addMessage('isis', 'Paramètres mis à jour.');
 }
 
 async function testGmail() {
@@ -452,7 +457,7 @@ async function testGmail() {
 
   if (!CFG.scriptUrl) {
     box.className = 'test-result err';
-    box.textContent = '✗ Aucune URL Apps Script. Colles-en une puis réessaie.';
+    box.textContent = '✗ Aucune URL Apps Script.';
     return;
   }
 
@@ -464,18 +469,13 @@ async function testGmail() {
     const data = await fetchGoogleData('unread');
     if (data.error) throw new Error(data.error);
     const emails = data.emails || data;
-    const nonLus = emails.nonLus ?? emails.unread ?? '?';
+    const nonLus = emails.nonLus ?? '?';
     const urgents = emails.urgents ?? 0;
     box.className = 'test-result ok';
-    box.textContent = `✓ Gmail connecté ! ${nonLus} non lu(s)${urgents > 0 ? `, dont ${urgents} urgents` : ''}.`;
+    box.textContent = `✓ Gmail connecté — ${nonLus} non lu(s)${urgents > 0 ? `, dont ${urgents} urgents` : ''}.`;
   } catch(e) {
     box.className = 'test-result err';
-    let hint = '';
-    if (/inaccessible|script/i.test(e.message))
-      hint = ' → Lance ISIS via lancer-isis.command et vérifie que l\'Apps Script est bien déployé.';
-    else if (/autoris|401|403/i.test(e.message))
-      hint = ' → Ouvre script.google.com → exécute getEmails() manuellement pour autoriser l\'accès.';
-    box.textContent = `✗ ${e.message}${hint}`;
+    box.textContent = `✗ ${e.message}`;
   }
 }
 
@@ -488,67 +488,63 @@ async function testKey(provider) {
   try {
     if (provider === 'claude') {
       const key = document.getElementById('settingsClaudeKey').value.trim();
-      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Claude d\'abord (console.anthropic.com).'; return; }
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Claude (console.anthropic.com).'; return; }
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
-        body: JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'Dis OK'}]}),
+        body: JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className='test-result ok'; result.textContent='✓ Clé Claude valide ! ISIS utilisera Claude en priorité.';
+      result.className='test-result ok'; result.textContent='✓ Clé Claude valide — priorité maximale.';
     } else if (provider === 'openai') {
       const key = document.getElementById('settingsOpenaiKey').value.trim();
-      if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenAI d\'abord.'; return; }
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenAI.'; return; }
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:'Dis OK'}],max_tokens:5}),
+        body: JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:'OK'}],max_tokens:5}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className='test-result ok'; result.textContent='✓ Clé OpenAI valide !';
+      result.className='test-result ok'; result.textContent='✓ Clé OpenAI valide.';
     } else if (provider === 'groq') {
       const key = document.getElementById('settingsGroqKey').value.trim();
-      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Groq d\'abord.'; return; }
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Groq (console.groq.com).'; return; }
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'user',content:'Dis juste "OK"'}],max_tokens:5}),
+        body: JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'user',content:'OK'}],max_tokens:5}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok';
-      result.textContent = '✓ Clé Groq valide ! Sauvegardez et utilisez ISIS.';
+      result.className = 'test-result ok'; result.textContent = '✓ Clé Groq valide.';
     } else {
       const key = document.getElementById('settingsApiKey').value.trim();
-      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Gemini d\'abord.'; return; }
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Gemini.'; return; }
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({contents:[{role:'user',parts:[{text:'Dis juste OK'}]}],generationConfig:{maxOutputTokens:5}}),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({contents:[{role:'user',parts:[{text:'OK'}]}],generationConfig:{maxOutputTokens:5}}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok';
-      result.textContent = '✓ Clé Gemini valide !';
+      result.className = 'test-result ok'; result.textContent = '✓ Clé Gemini valide.';
     }
   } catch(e) {
     result.className = 'test-result err';
-    result.textContent = `✗ Erreur : ${e.message}`;
+    result.textContent = `✗ ${e.message}`;
   }
 }
 
 function clearMemory() {
   if (!confirm('Effacer toute la mémoire de longue durée ?')) return;
-  memory = {};
-  history = [];
+  memory = {}; history = [];
   localStorage.removeItem('isis_memory');
   addMessage('isis', 'Mémoire effacée. Je recommence de zéro.');
 }
 
 // ================================================================
-//  SYSTÈME PROMPT — PROACTIF / KEMETED
+//  SYSTÈME PROMPT
 // ================================================================
 function buildSystemPrompt() {
   const today = new Date().toLocaleDateString('fr-FR', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -559,31 +555,30 @@ function buildSystemPrompt() {
 
   return `Tu es ISIS, assistant personnel exécutif exclusivement au service de ton utilisateur et de ses projets (notamment Kemeted).
 
-MISSION CENTRALE :
-Tu es proactif et autonome. Tu n'attends pas qu'on te demande — tu analyses, tu anticipes, tu proposes des actions concrètes. Tu agis comme un vrai chef de cabinet.
+MISSION : Tu es proactif et autonome. Tu analyses, tu anticipes, tu proposes des actions concrètes. Tu agis comme un vrai chef de cabinet.
 
-COMPORTEMENT PROACTIF (applique-le systématiquement) :
+COMPORTEMENT PROACTIF :
 Quand tu reçois des emails, identifie lesquels nécessitent une réponse et propose un brouillon directement.
 Quand tu vois l'agenda, repère les conflits ou créneaux manquants et suggère des ajustements.
 Quand un projet est mentionné, propose un plan d'action avec des dates et des étapes concrètes.
-Quand quelque chose peut être utile, propose-le sans attendre.
 
-RÈGLES NON NÉGOCIABLES :
+RÈGLES :
 Tu n'inventes JAMAIS de rendez-vous, d'emails ou de données — uniquement les données réelles reçues.
-Tu ne crées d'événements agenda QU'avec confirmation explicite de l'utilisateur.
-Tu ne JAMAIS envoies d'email sans confirmation — mais tu prépares le brouillon sans attendre qu'on te le demande.
-Toujours en français, zéro *, #, -, bullet points dans les réponses (elles sont lues à voix haute).
-Réponses directes, 2 à 3 phrases maximum sauf si on demande du détail.
-Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais toujours bienveillant.
+Tu ne crées d'événements agenda QU'avec confirmation explicite.
+Tu ne JAMAIS envoies d'email sans confirmation — mais tu prépares le brouillon sans attendre.
+Toujours en français, zéro *, #, -, bullet points (réponses lues à voix haute).
+Réponses directes, 2 à 3 phrases maximum sauf si détail demandé.
+Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais bienveillant.
 
-CAPACITÉS :
-Gmail, Agenda Google, Notion, Google Drive, création de docs, envoi d'emails, automatisations.
+CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, création de docs, envoi d'emails, automatisations.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
 }
 
+// ================================================================
+//  GEMINI
+// ================================================================
 async function callGemini() {
-  // BUG FIX : comparaison correcte par valeur (JSON.parse crée un nouvel objet à chaque fois)
   const isSame = (a, b) => a && b && a.version === b.version && a.model === b.model;
   const candidates = workingApi
     ? [workingApi, ...API_CANDIDATES.filter(c => !isSame(c, workingApi))]
@@ -595,23 +590,19 @@ async function callGemini() {
       if (!isSame(workingApi, candidate)) {
         workingApi = candidate;
         localStorage.setItem('isis_working_api', JSON.stringify(candidate));
-        console.info('ISIS utilise :', candidate.version, candidate.model);
       }
       return result;
     } catch(e) {
-      // BUG FIX : regex élargi pour capturer "Unknown name", "Invalid JSON payload", etc.
       const isModelError = /not found|quota|limit.*0|not supported|RESOURCE_EXHAUSTED|404|Unknown name|Invalid JSON|unavailable|deprecated/i.test(e.message);
-      if (isModelError) { console.warn('Modèle indisponible, essai suivant :', candidate.model, e.message); continue; }
+      if (isModelError) { continue; }
       throw e;
     }
   }
-  throw new Error('Aucun modèle Gemini disponible pour votre région. Vérifiez votre clé sur aistudio.google.com');
+  throw new Error('Aucun modèle Gemini disponible pour votre région.');
 }
 
 async function tryGeminiEndpoint({version, model}) {
   const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${CFG.apiKey}`;
-
-  // BUG FIX : v1 utilise "systemInstruction" (camelCase), v1beta utilise "system_instruction" (snake_case)
   const sysKey = version === 'v1' ? 'systemInstruction' : 'system_instruction';
 
   const body = {
@@ -620,20 +611,14 @@ async function tryGeminiEndpoint({version, model}) {
     generationConfig : { temperature:.75, maxOutputTokens:550, topP:.9 },
   };
 
-  const res = await fetch(url, {
-    method : 'POST',
-    headers: {'Content-Type':'application/json'},
-    body   : JSON.stringify(body),
-  });
-
+  const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Pas de réponse générée.';
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Pas de réponse.';
 }
 
 // ================================================================
-//  GROQ API (alternative gratuite, fonctionne en France)
+//  GROQ
 // ================================================================
 const GROQ_MODELS = [
   'llama-3.1-8b-instant',
@@ -642,7 +627,6 @@ const GROQ_MODELS = [
   'mixtral-8x7b-32768',
 ];
 
-// Convertit l'historique Gemini → format OpenAI/Groq
 function historyToOpenAI() {
   return history.map(h => ({
     role   : h.role === 'model' ? 'assistant' : 'user',
@@ -655,47 +639,34 @@ async function callGroq() {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method : 'POST',
-        headers: {
-          'Content-Type' : 'application/json',
-          'Authorization': `Bearer ${CFG.groqKey}`,
-        },
+        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.groqKey}` },
         body: JSON.stringify({
           model,
-          messages: [
-            { role:'system', content: buildSystemPrompt() },
-            ...historyToOpenAI(),
-          ],
-          temperature : 0.75,
-          max_tokens  : 550,
+          messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+          temperature: 0.75, max_tokens: 550,
         }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      return data.choices?.[0]?.message?.content || 'Pas de réponse générée.';
-
+      return data.choices?.[0]?.message?.content || 'Pas de réponse.';
     } catch(e) {
-      if (/model_not_found|404|decommissioned/i.test(e.message)) { console.warn('Modèle Groq indisponible:', model); continue; }
+      if (/model_not_found|404|decommissioned/i.test(e.message)) continue;
       throw e;
     }
   }
-  throw new Error('Aucun modèle Groq disponible. Vérifiez votre clé sur console.groq.com');
+  throw new Error('Aucun modèle Groq disponible.');
 }
 
-// ── Claude AI (meilleure qualité) ──
+// ── Claude ──
 async function callClaude() {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method : 'POST',
-    headers: {
-      'Content-Type'      : 'application/json',
-      'x-api-key'         : CFG.claudeKey,
-      'anthropic-version' : '2023-06-01',
-    },
+    headers: { 'Content-Type':'application/json', 'x-api-key':CFG.claudeKey, 'anthropic-version':'2023-06-01' },
     body: JSON.stringify({
-      model      : 'claude-haiku-4-5-20251001',
-      max_tokens : 600,
-      system     : buildSystemPrompt(),
-      messages   : historyToOpenAI(),
+      model    : 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      system   : buildSystemPrompt(),
+      messages : historyToOpenAI(),
     }),
   });
   const data = await res.json();
@@ -713,8 +684,7 @@ async function callOpenAI() {
         body: JSON.stringify({
           model,
           messages    : [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-          temperature : 0.75,
-          max_tokens  : 600,
+          temperature : 0.75, max_tokens: 600,
         }),
       });
       const data = await res.json();
@@ -725,25 +695,25 @@ async function callOpenAI() {
       throw e;
     }
   }
-  throw new Error('OpenAI indisponible');
+  throw new Error('OpenAI indisponible.');
 }
 
-// Routeur principal : Claude → OpenAI → Groq → Gemini
+// Routeur : Claude → OpenAI → Groq → Gemini
 async function callAI() {
   if (CFG.claudeKey) {
     try { return await callClaude(); }
-    catch(e) { console.warn('Claude échoué:', e.message); }
+    catch(e) { console.warn('Claude:', e.message); }
   }
   if (CFG.openaiKey) {
     try { return await callOpenAI(); }
-    catch(e) { console.warn('OpenAI échoué:', e.message); }
+    catch(e) { console.warn('OpenAI:', e.message); }
   }
   if (CFG.groqKey) {
     try { return await callGroq(); }
-    catch(e) { console.warn('Groq échoué:', e.message); }
+    catch(e) { console.warn('Groq:', e.message); }
   }
   if (CFG.apiKey) return await callGemini();
-  throw new Error('Aucune clé API configurée. Cliquez sur ⚙.');
+  throw new Error('Aucune clé API configurée. Clique sur ⚙.');
 }
 
 // ================================================================
@@ -762,31 +732,27 @@ async function executePendingAction() {
 
     if (type === 'send-email') {
       result = await fetchGoogleData('send-email', {
-        to     : data.to,
-        subject: data.subject,
-        body   : data.body.substring(0, 1200),
+        to: data.to, subject: data.subject, body: (data.body || '').substring(0, 1200),
       });
       reply = result.success ? `Email envoyé à ${data.to}.` : `Échec : ${result.error}`;
     }
     else if (type === 'create-event') {
       result = await fetchGoogleData('create-event', {
-        titre: data.titre,
-        debut: data.debut,
-        fin  : data.fin || '',
-        desc : (data.description || '').substring(0, 200),
+        titre: data.titre, debut: data.debut, fin: data.fin || '',
+        desc: (data.description || '').substring(0, 200),
       });
       reply = result.success ? `"${data.titre}" ajouté à ton agenda.` : `Échec : ${result.error}`;
     }
     else if (type === 'create-doc') {
       result = await fetchGoogleData('create-doc', {
-        titre  : data.titre,
-        contenu: data.contenu.substring(0, 2000),
+        titre: data.titre, contenu: (data.contenu || '').substring(0, 2000),
       });
       reply = result.success
-        ? `Document "${data.titre}" créé dans Google Drive. Ouvre Drive pour le lire.`
+        ? `Document "${data.titre}" créé dans Google Drive.`
         : `Échec : ${result.error}`;
     }
 
+    reply = reply || 'Action exécutée.';
     removeThinking(thinkId);
     addMessage('isis', reply);
     history.push({ role:'model', parts:[{text:reply}] });
@@ -846,19 +812,24 @@ Instruction: ${instruction}`
 }
 
 // ================================================================
-//  ENVOI DE MESSAGE
+//  ENVOI DE MESSAGE — point d'entrée principal
 // ================================================================
 function sendText() {
   const input = document.getElementById('textInput');
   const text  = input.value.trim();
   if (!text) return;
   input.value = '';
+  // Ferme le clavier sur mobile après envoi
+  input.blur();
   sendMessage(text);
 }
 
 async function sendMessage(userText) {
   if (!userText) return;
-  if (!CFG.groqKey && !CFG.apiKey) { alert('Clé API manquante. Cliquez sur ⚙'); return; }
+
+  // FIX : vérifie toutes les clés possibles
+  const hasKey = CFG.claudeKey || CFG.openaiKey || CFG.groqKey || CFG.apiKey;
+  if (!hasKey) { alert('Aucune clé API configurée. Clique sur ⚙.'); return; }
 
   // ── Confirmation d'action en attente ──
   if (pendingAction) {
@@ -878,15 +849,15 @@ async function sendMessage(userText) {
       addMessage('isis', m); speak(m);
       return;
     }
-    pendingAction = null; // nouvelle demande = on efface l'action précédente
+    pendingAction = null;
   }
 
   stopListening();
   addMessage('user', userText);
 
-  // ── Intentions spéciales ──
-  const wantsSendEmail   = /envoie\s+(un\s+)?(mail|email|message)\s+[àa]|rédige.*(mail|email).*et.*(envoie|send)/i.test(userText);
-  const wantsCreateEvent = /planifie|crée\s+(un\s+)?rendez.?vous|ajoute\s+(un\s+)?(événement|rdv)|programme\s+(une\s+)?réunion|bloque\s+(un\s+)?créneau|mets.*(dans|à|sur).*agenda/i.test(userText);
+  // ── Intentions : email / événement / document ──
+  const wantsSendEmail   = /envoie\s+(un\s+)?(mail|email|message)\s+[àa]|écris\s+(un\s+)?(mail|email)\s+[àa]|compose\s+(un\s+)?(email|mail)|rédige.*(mail|email).*et.*(envoie|send)|réponds?\s+(à|au)\s+(cet?\s+)?(email|mail|message)/i.test(userText);
+  const wantsCreateEvent = /planifie|crée\s+(un\s+)?rendez.?vous|ajoute\s+(un\s+)?(événement|rdv)|programme\s+(une\s+)?réunion|bloque\s+(un\s+)?créneau|mets.*(dans|à|sur).*agenda|fixe\s+(un\s+)?(rdv|rendez.?vous|réunion)|prends\s+(un\s+)?rendez.?vous|note\s+(un\s+)?(rdv|rendez.?vous)|nouveau\s+rendez.?vous|nouvel\s+événement|réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)/i.test(userText);
   const wantsCreateDoc   = /crée\s+(un\s+)?(document|google.?doc|rapport|fichier)|rédige\s+(un\s+)?(document|rapport|présentation)/i.test(userText);
 
   if (wantsSendEmail && CFG.scriptUrl) {
@@ -936,7 +907,7 @@ async function sendMessage(userText) {
       const doc = await preparerDocument(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Document à créer :\n"${doc.titre}"\n\n${doc.contenu.substring(0,250)}...\n\nJe crée ce Google Doc ?`;
+      const preview = `Document à créer :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,250)}...\n\nJe crée ce Google Doc ?`;
       addMessage('isis', preview);
       speak(`J'ai rédigé "${doc.titre}". Je crée le Google Doc ?`);
     } catch(e) {
@@ -948,43 +919,55 @@ async function sendMessage(userText) {
     return;
   }
 
-  // Détecte la nature de la demande
-  const wantsEmails  = /email|mail|message|boîte|courriel|inbox/i.test(userText);
-  const wantsUnread  = /non.?lu|unread/i.test(userText);
-  const wantsAgenda  = /agenda|planning|rendez.?vous|réunion|aujourd.?hui|demain|semaine|calendrier/i.test(userText);
-  const wantsBrief   = /brief|briefing|résumé.*(journée|matin|jour)|matin|point.*(jour|matin)/i.test(userText);
-  const wantsDraft   = /rédige|écris|envoie|réponds|prépare.*(mail|email|message)/i.test(userText);
-  const wantsAutoOn  = /active.*(brief|alerte|automatisation|urgence)|brief.*(matin|auto)|alerte.*(urgence|email)/i.test(userText);
-  const wantsAutoOff = /désactive.*(auto|brief|alerte|trigger)|arrête.*(auto|brief)/i.test(userText);
-  const wantsAutoStatus = /statut.*(auto|brief|alerte)|auto.*activ/i.test(userText);
-  let contextBlock   = '';
+  // ── Détection de la nature de la demande ──
+  const wantsEmails    = /email|mail|message|boîte|courriel|inbox/i.test(userText);
+  const wantsUnread    = /non.?lu|unread/i.test(userText);
+  const wantsAgenda    = /agenda|planning|rendez.?vous|réunion|aujourd.?hui|demain|semaine|calendrier/i.test(userText);
+  const wantsBrief     = /brief|briefing|résumé.*(journée|matin|jour)|matin|point.*(jour|matin)/i.test(userText);
+  const wantsDraft     = /rédige|écris|envoie|réponds|prépare.*(mail|email|message)/i.test(userText);
+  const wantsAutoOn    = /active.*(brief|alerte|automatisation|urgence|résumé|rappel)|brief.*(matin|auto)|alerte.*(urgence|email)|résumé.*hebdo|rappel.*agenda/i.test(userText);
+  const wantsAutoOff   = /désactive.*(auto|brief|alerte|trigger)|arrête.*(auto|brief)/i.test(userText);
+  const wantsAutoStatus= /statut.*(auto|brief|alerte)|auto.*activ|quelles.*auto/i.test(userText);
+  let contextBlock     = '';
 
-  // ── Automatisations ──
+  // ── FIX : automatisations avec thinkId correct ──
   if ((wantsAutoOn || wantsAutoOff || wantsAutoStatus) && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Automatisations...'); setHolo('thinking');
     try {
       let action = 'auto-status';
-      if (wantsAutoOff) action = 'auto-off';
-      else if (/brief|matin/i.test(userText)) action = 'auto-brief-on';
-      else if (/alerte|urgence/i.test(userText)) action = 'auto-urgences-on';
-      else if (wantsAutoOn) action = 'auto-brief-on';
+      if (wantsAutoOff)                              action = 'auto-off';
+      else if (/résumé|resume|hebdo/i.test(userText)) action = 'auto-resume-on';
+      else if (/rappel|agenda.*notif/i.test(userText))action = 'auto-rappels-on';
+      else if (/brief|matin/i.test(userText))         action = 'auto-brief-on';
+      else if (/alerte|urgence/i.test(userText))      action = 'auto-urgences-on';
+      else if (wantsAutoOn)                           action = 'auto-brief-on';
 
       const result = await fetchGoogleData(action);
-      const reply  = result.message || (result.briefMatinal !== undefined
-        ? `Brief matinal : ${result.briefMatinal ? 'actif' : 'inactif'}. Alertes urgences : ${result.alertesUrgences ? 'actives' : 'inactives'}.`
-        : JSON.stringify(result));
-
-      removeThinking(addThinking());
+      let reply = result.message;
+      if (!reply && result.briefMatinal !== undefined) {
+        reply = `Brief matinal : ${result.briefMatinal ? 'actif' : 'inactif'}. `
+              + `Alertes urgences : ${result.alertesUrgences ? 'actives' : 'inactives'}. `
+              + `Résumé hebdo : ${result.resumeHebdomadaire ? 'actif' : 'inactif'}. `
+              + `Rappels agenda : ${result.rappelsAgenda ? 'actifs' : 'inactifs'}.`;
+      }
+      reply = reply || 'Automatisation mise à jour.';
+      removeThinking(thinkId);
       addMessage('isis', reply);
+      history.push({ role:'model', parts:[{text: reply}] });
       speak(reply);
       setStatus('idle','En attente'); setHolo('idle');
       return;
     } catch(err) {
+      removeThinking(thinkId);
       console.error('Auto:', err.message);
+      // Retombe sur l'IA si le fetch échoue
     }
   }
 
+  // ── FIX : setHolo('thinking') ajouté pour Gmail/Agenda ──
   if (CFG.scriptUrl && (wantsEmails || wantsAgenda || wantsBrief)) {
-    setStatus('thinking', 'Consultation Gmail...');
+    setStatus('thinking', 'Consultation Gmail...'); setHolo('thinking');
     try {
       let action = 'all';
       if (wantsBrief)       action = 'brief';
@@ -994,34 +977,27 @@ async function sendMessage(userText) {
 
       const data = await fetchGoogleData(action);
       if (data) {
-        contextBlock = `\n\n--- DONNÉES GMAIL/AGENDA EN TEMPS RÉEL ---\n${JSON.stringify(data,null,2)}\n\nINSTRUCTIONS : Analyse ces données et réponds naturellement. Pour les emails, cite les expéditeurs et sujets importants. Signale les urgences. Ne liste pas tout — donne l'essentiel.`;
+        contextBlock = `\n\n--- DONNÉES GMAIL/AGENDA EN TEMPS RÉEL ---\n${JSON.stringify(data,null,2)}\n\nINSTRUCTIONS : Analyse ces données et réponds naturellement. Cite les expéditeurs et sujets importants. Signale les urgences. Donne l'essentiel, ne liste pas tout.`;
       }
     } catch(err) {
-      console.error('Gmail/Agenda fetch error:', err.message);
-      // ISIS informe l'utilisateur à voix haute du problème
+      console.error('Gmail/Agenda:', err.message);
       const errMsg = /Failed to fetch|CORS/i.test(err.message)
-        ? 'Je n\'arrive pas à me connecter à ton Gmail. Lance ISIS via le fichier lancer-isis.command plutôt qu\'en ouvrant index.html directement.'
-        : /401|403/i.test(err.message)
-        ? 'L\'accès Gmail n\'est pas autorisé. Va sur script.google.com et exécute la fonction getEmails pour autoriser l\'accès.'
+        ? 'Impossible de me connecter à ton Gmail. Vérifie que l\'URL Apps Script est correcte dans ⚙.'
         : `Connexion Gmail indisponible : ${err.message}`;
-      removeThinking(addThinking());
-      addMessage('isis', errMsg);
-      speak(errMsg);
+      addMessage('isis', errMsg); speak(errMsg);
       setStatus('idle','En attente'); setHolo('idle');
       return;
     }
   }
 
   if (wantsDraft && !CFG.scriptUrl) {
-    contextBlock += "\n\n(Pour rédiger des emails, configure l'URL Google Apps Script dans ⚙ Paramètres.)";
+    contextBlock += '\n\n(Pour rédiger des emails, configure l\'URL Google Apps Script dans ⚙ Paramètres.)';
   }
 
   // ── Google Drive ──
-  const wantsDrive  = /drive|fichier|document|doc|sheet|slides|présentation|pdf|dossier/i.test(userText);
-  const driveSearch = /cherche|trouve|ouvre|lis|montre/i.test(userText);
-
+  const wantsDrive = /drive|fichier|document|doc|sheet|slides|présentation|pdf|dossier/i.test(userText);
   if (wantsDrive && CFG.scriptUrl) {
-    setStatus('thinking', 'Consultation Drive...');
+    setStatus('thinking', 'Consultation Drive...'); setHolo('thinking');
     try {
       const driveQuery = userText.replace(/drive|cherche|trouve|ouvre|lis|montre|fichier|document|doc|mes|dans/gi, '').trim();
       const action = driveQuery.length > 2 ? 'drive-search' : 'drive-recent';
@@ -1033,16 +1009,14 @@ async function sendMessage(userText) {
         contextBlock += `\n\n(Drive "${driveQuery}" : aucun fichier trouvé.)`;
       }
     } catch(err) {
-      console.error('Drive:', err.message);
       contextBlock += `\n\n(Drive indisponible : ${err.message})`;
     }
   }
 
-  // ── Notion (via Apps Script — contourne CORS) ──
+  // ── Notion ──
   const wantsNotion = /notion|note|page|mémo/i.test(userText);
-
   if (wantsNotion && CFG.scriptUrl) {
-    setStatus('thinking', 'Consultation Notion...');
+    setStatus('thinking', 'Consultation Notion...'); setHolo('thinking');
     try {
       const searchQuery = userText.replace(/notion|cherche|trouve|dans|crée|ajoute|note|page|document|tâche/gi, '').trim();
       if (searchQuery.length > 2) {
@@ -1052,55 +1026,64 @@ async function sendMessage(userText) {
         } else if (result.error) {
           contextBlock += `\n\n(Notion : ${result.error})`;
         } else {
-          contextBlock += `\n\n(Notion "${searchQuery}" : aucune page trouvée — vérifie que les pages sont partagées avec l'intégration ISIS.)`;
+          contextBlock += `\n\n(Notion "${searchQuery}" : aucune page trouvée.)`;
         }
       }
     } catch(err) {
-      console.error('Notion:', err.message);
       contextBlock += `\n\n(Notion indisponible : ${err.message})`;
     }
   }
 
-  history.push({ role:'user', parts:[{text: userText + contextBlock}] });
+  // FIX : stocke UNIQUEMENT le texte utilisateur dans l'historique (pas le JSON Gmail/Drive)
+  // Le contextBlock est inclus pour cet appel AI uniquement, puis retiré
+  const historyEntry = { role:'user', parts:[{text: userText}] };
+  history.push(historyEntry);
+
+  // Inclut le contexte temporairement pour cet appel
+  if (contextBlock) historyEntry.parts[0].text = userText + contextBlock;
 
   const thinkId = addThinking();
-  setStatus('thinking', 'Réflexion...');
-  setHolo('thinking');
+  setStatus('thinking', 'Réflexion...'); setHolo('thinking');
 
   try {
     const reply = await callAI();
+
+    // Restaure le texte propre dans l'historique (sans le JSON)
+    historyEntry.parts[0].text = userText;
+
     removeThinking(thinkId);
     history.push({ role:'model', parts:[{text:reply}] });
-    if (history.length > 50) history = history.slice(-50);
+    if (history.length > 40) history = history.slice(-40);
+
     addMessage('isis', reply);
-    setStatus('speaking', 'ISIS parle...');
-    setHolo('speaking');
+    setStatus('speaking', 'ISIS parle...'); setHolo('speaking');
     extractMemory(userText);
     speak(reply);
+
   } catch(e) {
+    // FIX : retire le message utilisateur de l'historique si l'IA échoue
+    historyEntry.parts[0].text = userText;
+    history.pop();
     removeThinking(thinkId);
-    console.error(e);
 
     let msg = `Erreur : ${e.message}`;
     if (/fetch|network|Failed to fetch/i.test(e.message))
-      msg = 'Impossible de joindre l\'API. Vérifiez votre connexion Internet.';
+      msg = 'Impossible de joindre l\'API. Vérifie ta connexion Internet.';
 
-    addMessage('isis', msg);
-    setStatus('idle', 'En attente');
-    setHolo('idle');
+    addMessage('isis', msg); speak(msg);
+    setStatus('idle', 'En attente'); setHolo('idle');
   }
 }
 
 // ================================================================
-//  GOOGLE APPS SCRIPT — JSONP (contourne CORS définitivement)
-//  Gère : Gmail, Agenda, Notion
+//  GOOGLE APPS SCRIPT — JSONP (contourne CORS)
 // ================================================================
 function fetchGoogleData(action, extraParams = {}) {
   return new Promise((resolve, reject) => {
     if (!CFG.scriptUrl) { reject(new Error('URL Apps Script non configurée dans ⚙')); return; }
 
     const cbName = `_isis_cb_${Date.now()}`;
-    const script  = document.createElement('script');
+    const script = document.createElement('script');
 
     const timer = setTimeout(() => {
       cleanup();
@@ -1121,40 +1104,30 @@ function fetchGoogleData(action, extraParams = {}) {
 
     const params = new URLSearchParams({ action, callback: cbName, t: Date.now(), ...extraParams });
     script.src     = `${CFG.scriptUrl}?${params}`;
-    script.onerror = () => { cleanup(); reject(new Error('Apps Script inaccessible — vérifiez l\'URL et réautorisez sur script.google.com')); };
+    script.onerror = () => { cleanup(); reject(new Error('Apps Script inaccessible')); };
     document.head.appendChild(script);
   });
-}
-
-// ================================================================
-//  NOTION — via Apps Script (pas de CORS)
-// ================================================================
-async function createNotionPage(titre, contenu) {
-  if (!CFG.scriptUrl) throw new Error('URL Apps Script non configurée dans ⚙');
-  return await fetchGoogleData('notion-create', { titre, contenu });
 }
 
 async function testNotion() {
   const box = document.getElementById('notionResult');
   if (!CFG.scriptUrl) {
     box.className = 'test-result err';
-    box.textContent = '✗ Configure d\'abord l\'URL Apps Script (ci-dessus), puis reteste.';
+    box.textContent = '✗ Configure d\'abord l\'URL Apps Script (ci-dessus).';
     return;
   }
-
-  box.className = 'test-result'; box.textContent = 'Test Notion via Apps Script...'; box.style.display = 'block';
-
+  box.className = 'test-result'; box.textContent = 'Test Notion...'; box.style.display = 'block';
   try {
     const data = await fetchGoogleData('notion-search', { query: '' });
     const nb = data.total ?? data.pages?.length ?? 0;
     box.className   = 'test-result ok';
     box.textContent = nb > 0
-      ? `✓ Notion connecté ! ${nb} pages accessibles.`
-      : '✓ Apps Script OK. Aucune page Notion partagée : ouvre Notion → ··· → Connexions → ajoute ton intégration ISIS.';
+      ? `✓ Notion connecté — ${nb} pages accessibles.`
+      : '✓ Apps Script OK. Aucune page partagée : ouvre Notion → ··· → Connexions → ajoute l\'intégration ISIS.';
   } catch(e) {
     box.className   = 'test-result err';
     const hint = /Clé Notion vide|NOTION_KEY/i.test(e.message)
-      ? ' → Ouvre le code Apps Script, remplis NOTION_KEY, sauvegarde et redéploie (Déployer → Gérer les déploiements → Nouvelle version).'
+      ? ' → Remplis NOTION_KEY dans le code Apps Script et redéploie.'
       : '';
     box.textContent = `✗ ${e.message}${hint}`;
   }
@@ -1167,7 +1140,7 @@ const WAKE_PATTERNS = /hey isis|hé isis|ey isis|isis écoute|isis réponds/i;
 
 function buildRecognition(continuous) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { alert('Reconnaissance vocale non disponible. Utilisez Chrome ou Edge.'); return null; }
+  if (!SR) { alert('Reconnaissance vocale non disponible. Utilise Chrome ou Edge.'); return null; }
   const rec = new SR();
   rec.lang = 'fr-FR';
   rec.continuous = continuous;
@@ -1176,7 +1149,6 @@ function buildRecognition(continuous) {
   return rec;
 }
 
-// ── Mode conversation automatique (wake word + auto-écoute) ──
 function startContinuousListen() {
   if (isSpeaking) return;
   if (recognition) try { recognition.stop(); } catch(e) {}
@@ -1184,22 +1156,17 @@ function startContinuousListen() {
   recognition = buildRecognition(true);
   if (!recognition) return;
 
-  isListening   = true;
-  listenPhase   = 'wakeword';
-
+  isListening = true;
   setStatus('listening', listenPhase === 'wakeword' ? 'En veille — dites "Hey ISIS"' : 'Écoute...');
   setHolo('listening');
   document.getElementById('micBtn').classList.add('active');
   document.getElementById('micLabel').textContent = 'Actif';
 
-  // Micro pour visualisation
   if (!audioStream) {
     navigator.mediaDevices?.getUserMedia({audio:true})
       .then(s => { audioStream=s; if(holoViz) holoViz.connectAudio(s); })
       .catch(() => {});
   }
-
-  let messageBuffer = '';
 
   recognition.onresult = (e) => {
     let interim = '', final = '';
@@ -1215,13 +1182,11 @@ function startContinuousListen() {
     if (listenPhase === 'wakeword') {
       if (WAKE_PATTERNS.test(heard)) {
         listenPhase = 'message';
-        messageBuffer = '';
         playActivationSound();
         setStatus('listening', 'Écoute votre message...');
       }
     } else if (listenPhase === 'message') {
       if (final) {
-        // Retire le wake word du message s'il est présent
         const msg = final.replace(WAKE_PATTERNS, '').trim();
         if (msg.length > 1) {
           listenPhase = 'idle';
@@ -1230,7 +1195,7 @@ function startContinuousListen() {
           document.getElementById('transcriptPreview').textContent = '';
           sendMessage(msg);
         } else {
-          listenPhase = 'wakeword'; // message vide → retour en veille
+          listenPhase = 'wakeword';
         }
       }
     }
@@ -1238,11 +1203,9 @@ function startContinuousListen() {
 
   recognition.onerror = (e) => {
     if (e.error === 'not-allowed') {
-      alert('Microphone refusé — autorisez l\'accès dans les paramètres du navigateur.');
-      stopConversation();
-      return;
+      alert('Microphone refusé — autorise l\'accès dans les paramètres du navigateur.');
+      stopConversation(); return;
     }
-    // Relance automatique sur les erreurs passagères
     if (convMode && !isSpeaking) setTimeout(() => startContinuousListen(), 400);
   };
 
@@ -1256,20 +1219,16 @@ function startContinuousListen() {
 }
 
 function stopConversation() {
-  convMode    = false;
-  isListening = false;
-  listenPhase = 'idle';
+  convMode = false; isListening = false; listenPhase = 'idle';
   if (recognition) try { recognition.stop(); } catch(e) {}
   document.getElementById('micBtn').classList.remove('active');
   document.getElementById('micLabel').textContent = 'Parler';
   document.getElementById('convBtn').classList.remove('active');
   document.getElementById('convBtn').title = 'Activer le mode conversation';
   document.getElementById('transcriptPreview').textContent = '';
-  setStatus('idle','En attente');
-  setHolo('idle');
+  setStatus('idle','En attente'); setHolo('idle');
 }
 
-// ── Bouton micro simple (sans mode conversation) ──
 function toggleListening() {
   if (isSpeaking) { window.speechSynthesis.cancel(); isSpeaking=false; setHolo('idle'); }
   if (convMode) { stopConversation(); return; }
@@ -1305,7 +1264,7 @@ function startListening() {
   };
 
   recognition.onerror = (e) => {
-    if (e.error==='not-allowed') alert('Microphone refusé — autorisez l\'accès dans les paramètres du navigateur.');
+    if (e.error==='not-allowed') alert('Microphone refusé — autorise l\'accès dans les paramètres du navigateur.');
     stopListening();
   };
 
@@ -1322,7 +1281,6 @@ function stopListening() {
   if (!isSpeaking) { setStatus('idle','En attente'); setHolo('idle'); }
 }
 
-// ── Toggle mode conversation automatique ──
 function toggleConvMode() {
   if (convMode) {
     stopConversation();
@@ -1338,18 +1296,16 @@ function toggleConvMode() {
   }
 }
 
-// ── SYNTHÈSE VOCALE — Phrase par phrase pour une diction naturelle ──
+// ================================================================
+//  SYNTHÈSE VOCALE — optimisée iOS + Android
+// ================================================================
 function getBestVoice() {
   const all = window.speechSynthesis.getVoices();
   const priority = [
-    'Microsoft Hortense Online',
-    'Microsoft Hortense',
-    'Microsoft Julie Online',
-    'Microsoft Julie',
-    'Google français',
-    'Google French',
-    'Amélie',
-    'Thomas',
+    'Microsoft Hortense Online', 'Microsoft Hortense',
+    'Microsoft Julie Online',    'Microsoft Julie',
+    'Google français',           'Google French',
+    'Amélie',                    'Thomas',
   ];
   for (const name of priority) {
     const v = all.find(v => v.name.startsWith(name));
@@ -1381,47 +1337,70 @@ function speak(text, onDone) {
 
   window.speechSynthesis.cancel();
 
-  // Découpe en phrases pour une élocution naturelle
   const sentences = clean.match(/[^.!?…]+[.!?…]+(?:\s|$)|[^.!?…]+$/g)
     ?.map(s => s.trim()).filter(s => s.length > 1) || [clean];
 
   let idx = 0;
 
+  // FIX iOS : watchdog qui relance la synthèse vocale toutes les 10s
+  // iOS Safari la coupe arbitrairement après ~30s
+  let iosWatchdog = null;
+  const startWatchdog = () => {
+    if (!/iphone|ipad|ipod/i.test(navigator.userAgent)) return;
+    iosWatchdog = setInterval(() => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 10000);
+  };
+  const stopWatchdog = () => {
+    if (iosWatchdog) { clearInterval(iosWatchdog); iosWatchdog = null; }
+  };
+
   const speakNext = () => {
     if (idx >= sentences.length) {
       isSpeaking = false;
-      setStatus('idle','En attente');
-      setHolo('idle');
-      // Mode conversation : relance l'écoute automatiquement
+      stopWatchdog();
+      setStatus('idle','En attente'); setHolo('idle');
+      // FIX : en mode conversation, écoute directement le message suivant (pas de wake word)
       if (convMode) {
-        setTimeout(() => { listenPhase='wakeword'; startContinuousListen(); }, 600);
+        setTimeout(() => { listenPhase = 'message'; startContinuousListen(); }, 500);
       }
       onDone?.();
       return;
     }
 
-    const currentVoices = window.speechSynthesis.getVoices();
-    const voice = (currentVoices.length ? null : null) || getBestVoice();
+    // FIX : suppression du code mort (null ? null : null)
+    const voice = getBestVoice();
 
     const utt    = new SpeechSynthesisUtterance(sentences[idx++]);
     utt.lang     = 'fr-FR';
-    utt.rate     = 0.97;   // fluide et naturel
-    utt.pitch    = 0.82;   // grave et autoritaire comme Alexa
+    utt.rate     = 0.97;
+    utt.pitch    = 0.82;
     utt.volume   = 1.0;
     if (voice) utt.voice = voice;
 
     utt.onend   = () => setTimeout(speakNext, 120);
-    utt.onerror = () => { isSpeaking=false; setStatus('idle','En attente'); setHolo('idle'); onDone?.(); };
+    utt.onerror = (e) => {
+      // Ignore les erreurs d'interruption (cancel() déclenche 'interrupted')
+      if (e.error === 'interrupted') return;
+      isSpeaking = false; stopWatchdog();
+      setStatus('idle','En attente'); setHolo('idle');
+      onDone?.();
+    };
 
     window.speechSynthesis.speak(utt);
   };
 
   isSpeaking = true;
 
+  const go = () => { startWatchdog(); speakNext(); };
+
   if (window.speechSynthesis.getVoices().length > 0) {
-    speakNext();
+    go();
   } else {
-    window.speechSynthesis.onvoiceschanged = () => speakNext();
+    window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; go(); };
   }
 }
 
@@ -1430,13 +1409,13 @@ function speak(text, onDone) {
 // ================================================================
 function extractMemory(text) {
   const rules = [
-    { re:/je m['']appelle ([A-ZÀ-Ÿa-zà-ÿ\-\s]+)/i,                          key:'prenom'      },
-    { re:/mon (entreprise|société|boîte) (?:s['']appelle|est) (.+)/i,         key:'entreprise', idx:2 },
-    { re:/je travaille (?:dans|chez|pour) (.+)/i,                             key:'travail'     },
-    { re:/j['']habite (?:à|en|au) (.+)/i,                                     key:'ville'       },
-    { re:/mon projet (?:est|s['']appelle|c['']est) (.+)/i,                    key:'projet'      },
-    { re:/mon objectif (?:est|c['']est|principal) (.+)/i,                     key:'objectifs'   },
-    { re:/je veux (?:devenir|atteindre|réussir|créer|développer|bâtir) (.+)/i,key:'objectifs'   },
+    { re:/je m['']appelle ([A-ZÀ-Ÿa-zà-ÿ\-\s]+)/i,                           key:'prenom'    },
+    { re:/mon (entreprise|société|boîte) (?:s['']appelle|est) (.+)/i,          key:'entreprise', idx:2 },
+    { re:/je travaille (?:dans|chez|pour) (.+)/i,                              key:'travail'   },
+    { re:/j['']habite (?:à|en|au) (.+)/i,                                      key:'ville'     },
+    { re:/mon projet (?:est|s['']appelle|c['']est) (.+)/i,                     key:'projet'    },
+    { re:/mon objectif (?:est|c['']est|principal) (.+)/i,                      key:'objectifs' },
+    { re:/je veux (?:devenir|atteindre|réussir|créer|développer|bâtir) (.+)/i, key:'objectifs' },
     { re:/(?:j['']aime|je m['']intéresse à|ma passion|mon domaine) (?:est|c['']est|:)?\s*(.+)/i, key:'interets' },
   ];
 
@@ -1483,7 +1462,7 @@ function addThinking() {
 function removeThinking(id) { document.getElementById(id)?.remove(); }
 
 function setStatus(type, label) {
-  document.getElementById('statusDot').className  = `status-dot ${type==='idle'?'':type}`;
+  document.getElementById('statusDot').className   = `status-dot ${type==='idle'?'':type}`;
   document.getElementById('statusText').textContent = label;
 }
 

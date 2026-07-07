@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ISIS — Assistant Personnel</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
@@ -29,23 +29,32 @@
       <div class="setup-step recommended">
         <span class="step-num">★</span>
         <div>
-          <strong>Clé API Groq — Recommandé pour la France</strong>
-          <p>console.groq.com → API Keys → Create → Copier<br>100% gratuit, aucune restriction EU, ultra-rapide</p>
+          <strong>Clé Claude AI (console.anthropic.com — meilleure qualité)</strong>
+          <p>Meilleure qualité de réponse — payant mais économique</p>
+        </div>
+      </div>
+      <input type="password" id="setupClaudeKey" class="setup-input" placeholder="sk-ant-..." autocomplete="off" />
+
+      <div class="setup-step optional">
+        <span class="step-num">2</span>
+        <div>
+          <strong>Clé Groq — Gratuit &amp; rapide</strong>
+          <p>console.groq.com → API Keys → Create → Copier</p>
         </div>
       </div>
       <input type="password" id="setupGroqKey" class="setup-input" placeholder="gsk_..." autocomplete="off" />
 
       <div class="setup-step optional">
-        <span class="step-num">2</span>
+        <span class="step-num">3</span>
         <div>
-          <strong>Clé API Gemini <em>(optionnel / alternative)</em></strong>
-          <p>aistudio.google.com → Get API key (peut être limité en France)</p>
+          <strong>Clé OpenAI (platform.openai.com)</strong>
+          <p>Optionnel — alternative à Claude</p>
         </div>
       </div>
-      <input type="password" id="setupApiKey" class="setup-input" placeholder="AIza..." autocomplete="off" />
+      <input type="password" id="setupOpenaiKey" class="setup-input" placeholder="sk-..." autocomplete="off" />
 
       <div class="setup-step optional">
-        <span class="step-num">3</span>
+        <span class="step-num">4</span>
         <div>
           <strong>URL Google Apps Script <em>(Gmail + Agenda)</em></strong>
           <p>Optionnel — ajoutez-la plus tard dans ⚙ Paramètres</p>
