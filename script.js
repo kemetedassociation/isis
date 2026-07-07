@@ -858,7 +858,7 @@ async function sendMessage(userText) {
   // ── Intentions : email / événement / document ──
   const wantsSendEmail   = /envoie\s+(un\s+)?(mail|email|message)\s+[àa]|écris\s+(un\s+)?(mail|email)\s+[àa]|compose\s+(un\s+)?(email|mail)|rédige.*(mail|email).*et.*(envoie|send)|réponds?\s+(à|au)\s+(cet?\s+)?(email|mail|message)/i.test(userText);
   const wantsCreateEvent = /planifie|crée\s+(un\s+)?rendez.?vous|ajoute\s+(un\s+)?(événement|rdv)|programme\s+(une\s+)?réunion|bloque\s+(un\s+)?créneau|mets.*(dans|à|sur).*agenda|fixe\s+(un\s+)?(rdv|rendez.?vous|réunion)|prends\s+(un\s+)?rendez.?vous|note\s+(un\s+)?(rdv|rendez.?vous)|nouveau\s+rendez.?vous|nouvel\s+événement|réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)/i.test(userText);
-  const wantsCreateDoc   = /crée\s+(un\s+)?(document|google.?doc|rapport|fichier)|rédige\s+(un\s+)?(document|rapport|présentation)/i.test(userText);
+  const wantsCreateDoc   = /crée\s+(une?\s+)?(document|google.?doc|rapport|fichier)|rédige\s+(une?\s+)?(document|rapport|présentation)/i.test(userText);
 
   if (wantsSendEmail && CFG.scriptUrl) {
     const thinkId = addThinking();
@@ -922,7 +922,7 @@ async function sendMessage(userText) {
   // ── Détection de la nature de la demande ──
   const wantsEmails    = /email|mail|message|boîte|courriel|inbox/i.test(userText);
   const wantsUnread    = /non.?lu|unread/i.test(userText);
-  const wantsAgenda    = /agenda|planning|rendez.?vous|réunion|aujourd.?hui|demain|semaine|calendrier/i.test(userText);
+  const wantsAgenda    = /agenda|planning|rendez.?vous|\brdv\b|réunion|aujourd.?hui|demain|semaine|calendrier/i.test(userText);
   const wantsBrief     = /brief|briefing|résumé.*(journée|matin|jour)|matin|point.*(jour|matin)/i.test(userText);
   const wantsDraft     = /rédige|écris|envoie|réponds|prépare.*(mail|email|message)/i.test(userText);
   const wantsAutoOn    = /active.*(brief|alerte|automatisation|urgence|résumé|rappel)|brief.*(matin|auto)|alerte.*(urgence|email)|résumé.*hebdo|rappel.*agenda/i.test(userText);
