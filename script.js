@@ -151,7 +151,73 @@ Offre cible : Pack formation SEO + formation IA (tarif duo)
 Accroche : "Votre site est déjà bien construit, mais le contenu sent le remplissage automatique pour Google."
 Statut : à contacter
 
-CONTACT KEMETED : kemeted.association@gmail.com · Tel : 07 58 71 52 76`;
+CONTACT KEMETED : kemeted.association@gmail.com · Tel : 07 58 71 52 76
+
+═══════════════════════════════════════════════════════
+DONNÉES ADMINISTRATIVES OFFICIELLES — KEMETED & ASSOCIATION
+═══════════════════════════════════════════════════════
+
+IDENTITÉ LÉGALE :
+Dénomination officielle : KEMETED & ASSOCIATION
+SIREN : 988 173 738
+SIRET : 988 173 738 00010
+N°RNA : W251010973
+Catégorie juridique : 9220 — Association déclarée loi 1901
+APE : 94.99Z — Autres organisations fonctionnant par adhésion volontaire
+Économie Sociale et Solidaire (ESS) : Oui
+Date de création légale : 14 juin 2025 (déclaration Préfecture du Doubs)
+AG constitutive : 25 mai 2025 à Besançon, 17h25
+Publication JOAFE : 24 juin 2025, N°25, Annonce n°442 — 25 Doubs
+Récépissé préfectoral : W251010973 — Sous-préfecture de Pontarlier, 16 juin 2025
+
+SIÈGE SOCIAL ACTUEL : 3 rue Granvelle, 25000 Besançon
+(Siège initial lors de la création : Appartement 34, 4 rue Xavier Marmier, 25000 Besançon)
+
+BUREAU ACTUEL (élu lors de l'AGE du 15 juin 2026 — mandat 3 ans) :
+- Président : Khadim Fall
+- Co-présidente : Sokhna Baly Bousso M. Fall
+- Vice-président : Baye Samba D Fall
+- Trésorière : Ndeye Awa Fall
+
+BUREAU FONDATEUR (PV constitutif du 25 mai 2025) :
+- Présidente fondatrice : Fall Ndeye Awa (entrepreneur, 4 rue Xavier Marmier, Besançon)
+- Co-présidente : Fall Sokhna Baly Bousso Mbacké (commerciale)
+- Vice-président : Fall Baye Samba Diaw (étudiant)
+
+ADRESSE PERSONNELLE — KHADIM FALL (Président) :
+77 rue Fontaine Écu, appartement 88, 25000 Besançon
+Hébergé chez Mme Manal Yasmi depuis le 29 juin 2026 (attestation d'hébergement disponible)
+
+BANQUE : Crédit Agricole Franche-Comté — Agence Besançon Saint Ferjeux
+(Les coordonnées bancaires IBAN/BIC ne sont pas communiquées dans ce contexte par sécurité — disponibles sur les documents officiels)
+
+OBJET OFFICIEL PUBLIÉ AU JOAFE :
+"Promouvoir la solidarité active entre l'Afrique et l'Europe à travers des actions de formation, d'éducation, de sensibilisation et de développement durable ; organiser séminaires, ateliers, événements culturels, galas et formations destinés à accompagner les jeunes générations africaines et européennes ; contribuer à la lutte contre les stéréotypes culturels, sociaux et économiques par des initiatives valorisant la diversité et l'ouverture ; développer et valoriser les savoir-faire artisanaux, culturels, sportifs et alimentaires des pays africains, notamment autour du bio, de l'artisanat local et des pratiques traditionnelles comme la lutte sénégalaise ; solliciter dons, subventions, aides matérielles et partenariats auprès d'organismes publics ou privés afin de soutenir ses actions."
+
+BUDGET PRÉVISIONNEL 2025-2026 (approuvé) :
+CHARGES TOTALES : 16 475€
+- Fonctionnement (loyer local 350€/mois, charges, assurance, tél, domaine, frais bancaires) : 6 280€
+- Mobilier & équipement (bureaux, chaises, tables pliantes, rangements) : 1 100€
+- Informatique & création IA (2 PC 16Go RAM, SSD, écrans, logiciels IA, Canva Pro, Notion, Zapier) : 3 020€
+- Matériel événementiel/Gala (micros HF, enceintes, table mixage, spots LED, stand bar) : 1 780€
+- Fournitures de bureau : 375€
+- Communication & visibilité (visuels, pub FB/IG, brochures) : 670€
+- Achats alimentaires solidaires (bissap, mil, moringa, emballages) : 750€
+- Ressources humaines non salariale (gratifications bénévoles, prestataires) : 1 000€
+- Réserve stratégique & imprévus : 1 500€
+
+PRODUITS PRÉVISIONNELS : 16 500€
+- Subvention FDVA (fonctionnement & innovation) : 5 000€ (objectif 6 500€)
+- Subvention Région Bourgogne-Franche-Comté : 3 000€ (objectif 3 500€)
+- Subvention Ville de Besançon / Grand Besançon : 2 000€
+- Campagne HelloAsso (dons en ligne) : 1 000€ (objectif 2 000€)
+- Ventes produits artisanaux & alimentaires africains (KemetPlace) : 2 500€ (objectif)
+- Partenariats privés / mécénat local : 2 000€
+- Recettes événements (galas, billetterie, expositions) : 1 000€
+RÉSULTAT NET PRÉVISIONNEL : +25€ (équilibre)
+
+DEVISE DE KEMETED : "Relier. Relever. Réparer."`;
+
 
 
 // ── ÉTAT GLOBAL ──
@@ -478,14 +544,35 @@ function showApp() {
   // Initialisation mémoire KEMETED au premier lancement
   if (!memory.kemeted_init) {
     memory.kemeted_init   = true;
-    memory.entreprise     = memory.entreprise || 'KEMETED';
-    memory.ville          = memory.ville      || 'Besançon (+ coopération Sénégal)';
-    memory.projet         = memory.projet     || 'KEMETED — écosystème culturel, entrepreneurial et solidaire Afrique-Europe';
-    memory.objectifs      = memory.objectifs  || 'Créer un écosystème durable entre Afrique et Europe. Autonomiser les bénéficiaires. Devenir une référence nationale de l\'innovation sociale.';
-    memory.interets       = memory.interets   || 'Culture africaine, insertion sociale, autonomie financière, IA, numérique, entrepreneuriat, coopération internationale, formation';
+    memory.prenom         = memory.prenom      || 'Khadim';
+    memory.entreprise     = memory.entreprise  || 'KEMETED & ASSOCIATION';
+    memory.ville          = memory.ville       || 'Besançon, 25000 (+ coopération Sénégal)';
+    memory.projet         = memory.projet      || 'KEMETED — écosystème culturel, entrepreneurial et solidaire Afrique-Europe';
+    memory.objectifs      = memory.objectifs   || 'Créer un écosystème durable entre Afrique et Europe. Autonomiser les bénéficiaires. Devenir une référence nationale de l\'innovation sociale.';
+    memory.interets       = memory.interets    || 'Culture africaine, insertion sociale, autonomie financière, IA, numérique, entrepreneuriat, coopération internationale, formation';
     memory.devise         = 'Construire aujourd\'hui ce qui permettra aux autres de construire demain.';
+    memory.role           = 'Président de KEMETED & Association';
+    memory.adresse        = '77 rue Fontaine Écu, appartement 88, 25000 Besançon';
+    memory.email          = 'kemeted.association@gmail.com';
+    memory.tel            = '07 58 71 52 76';
+    // Données légales KEMETED
+    memory.siren          = '988 173 738';
+    memory.siret          = '988 173 738 00010';
+    memory.rna            = 'W251010973';
+    memory.siege          = '3 rue Granvelle, 25000 Besançon';
+    memory.date_creation  = '14 juin 2025 (déclaration Préfecture du Doubs)';
+    memory.ag_constitutive = '25 mai 2025';
+    memory.joafe          = '24 juin 2025 — N°25, Annonce n°442';
+    // Bureau AGE 15 juin 2026
+    memory.bureau         = 'Président: Khadim Fall | Co-présidente: Sokhna Baly Bousso M. Fall | Vice-président: Baye Samba D Fall | Trésorière: Ndeye Awa Fall';
+    // Budget
+    memory.budget_2025_2026 = 'Charges: 16 475€ | Produits: 16 500€ | Résultat: +25€';
     localStorage.setItem('isis_memory', JSON.stringify(memory));
   }
+
+  // Met à jour le sous-titre avec le prénom
+  const sub = document.getElementById('appSubtitle');
+  if (sub && memory.prenom) sub.textContent = `Bonjour ${memory.prenom}`;
 
   requestAnimationFrame(() => {
     setTimeout(() => {
@@ -550,15 +637,16 @@ async function checkEtatInitial() {
     );
     if (emailRDV && CFG.scriptUrl) {
       setTimeout(async () => {
+        if (pendingAction) return; // Ne pas écraser un brouillon déjà en attente
         const ev = await preparerEvenement(
           `Prépare un rendez-vous suite à cet email de ${emailRDV.fromName} : "${emailRDV.subject}". Preview : ${emailRDV.preview || ''}`
         ).catch(() => null);
-        if (ev) {
+        if (ev && !pendingAction) {
           pendingAction = { type: 'create-event', data: ev };
-          const d = new Date(ev.debut);
-          const ds = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) + ' à ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
-          const msg = `${emailRDV.fromName} propose une réunion. J'ai préparé un RDV "${ev.titre}" le ${ds}. Je l'ajoute à ton agenda ?`;
-          addMessage('isis', msg); speak(msg);
+          const msg = `${emailRDV.fromName} propose une réunion. J'ai préparé un événement. Je l'ajoute à ton agenda ?`;
+          addMessage('isis', msg);
+          addCard(renderEventCard(ev, false));
+          speak(msg);
         }
       }, 4000);
     }
@@ -740,6 +828,13 @@ Toujours en français, zéro *, #, -, bullet points (réponses lues à voix haut
 Réponses directes, 2 à 3 phrases maximum sauf si détail demandé.
 Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais bienveillant.
 
+INTERDIT ABSOLU — LOI 7 :
+Tu ne peux PAS créer toi-même des événements dans l'agenda, envoyer des emails, ou créer des documents Google.
+Ces actions sont exécutées par le système ISIS uniquement quand l'utilisateur utilise une phrase de déclenchement.
+Si une action n'a pas été détectée automatiquement, DIS-LE CLAIREMENT et guide l'utilisateur : "Pour créer ce rendez-vous, dis par exemple : mets un rdv avec [nom] demain à [heure]."
+Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'as pas reçu de confirmation visuelle que l'action a été déclenchée.
+NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
+
 CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, création de docs, envoi d'emails, automatisations.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
@@ -791,10 +886,10 @@ async function tryGeminiEndpoint({version, model}) {
 //  GROQ
 // ================================================================
 const GROQ_MODELS = [
-  'llama-3.1-8b-instant',
-  'llama3-8b-8192',
+  'llama-3.3-70b-versatile',
+  'llama3-70b-8192',
+  'llama-3.1-70b-versatile',
   'gemma2-9b-it',
-  'mixtral-8x7b-32768',
 ];
 
 function historyToOpenAI() {
@@ -910,16 +1005,35 @@ async function executePendingAction() {
       result = await fetchGoogleData('create-event', {
         titre: data.titre, debut: data.debut, fin: data.fin || '',
         desc: (data.description || '').substring(0, 200),
+        rappel: data.rappel || 30,
       });
-      reply = result.success ? `"${data.titre}" ajouté à ton agenda.` : `Échec : ${result.error}`;
+      if (result.success) {
+        reply = `"${data.titre}" ajouté à ton agenda. ✓`;
+        removeThinking(thinkId);
+        addMessage('isis', reply);
+        addCard(renderEventCard({...data, rappel: result.rappel || data.rappel || 30}, true));
+        history.push({ role:'model', parts:[{text:reply}] });
+        speak(reply);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+      reply = `Échec : ${result.error}`;
     }
     else if (type === 'create-doc') {
       result = await fetchGoogleData('create-doc', {
         titre: data.titre, contenu: (data.contenu || '').substring(0, 2000),
       });
-      reply = result.success
-        ? `Document "${data.titre}" créé dans Google Drive.`
-        : `Échec : ${result.error}`;
+      if (result.success) {
+        reply = `Document "${data.titre}" créé. ✓`;
+        removeThinking(thinkId);
+        addMessage('isis', reply);
+        addCard(renderDocCard(data, result.url));
+        history.push({ role:'model', parts:[{text:reply}] });
+        speak(reply);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+      reply = `Échec : ${result.error}`;
     }
 
     reply = reply || 'Action exécutée.';
@@ -958,12 +1072,20 @@ Instruction: ${instruction}`
 }
 
 async function preparerEvenement(instruction) {
-  const today = new Date().toISOString().split('T')[0];
-  const raw = await callAIOneShot(
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  const raw   = await callAIOneShot(
     `Génère un événement agenda. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
-{"titre":"titre","debut":"${today}T09:00:00","fin":"${today}T10:00:00","description":"description courte"}
-Date aujourd'hui: ${new Date().toLocaleDateString('fr-FR')}
-Instruction: ${instruction}`
+{"titre":"titre de l'événement","debut":"YYYY-MM-DDTHH:MM:SS","fin":"YYYY-MM-DDTHH:MM:SS","description":"notes courtes","rappel":30}
+RÈGLES :
+- debut/fin en ISO 8601 (YYYY-MM-DDTHH:MM:SS)
+- rappel = minutes avant l'événement (30 par défaut, 60 si l'utilisateur dit "1h avant", 1440 si "la veille")
+- Si heure non précisée : 09:00
+- Si "demain" : date du ${new Date(now.getTime()+86400000).toISOString().split('T')[0]}
+- Si "ce soir" : ${today}T19:00:00
+- Durée par défaut : 1 heure
+Date aujourd'hui : ${now.toLocaleDateString('fr-FR')} (${today})
+Instruction : ${instruction}`
   );
   const m = raw.match(/\{[\s\S]+\}/);
   if (!m) throw new Error('Format JSON incorrect');
@@ -1068,8 +1190,8 @@ async function sendMessage(userText) {
 
   // ── Confirmation d'action en attente ──
   if (pendingAction) {
-    const isOui = /^(oui|confirme|ok|vas.y|envoie|crée|c'est.bon|parfait|go|yes|d'accord|allez)/i.test(userText.trim());
-    const isNon = /^(non|annule|stop|laisse.tomber|pas.maintenant|change)/i.test(userText.trim());
+    const isOui = /^(?:oui|confirme|ok|vas.?y|envoie|crée|c'est.bon|parfait|go|yes|d'accord|allez|bien sûr|absolument|exactement|fais.?le|fais.?ça|je\s+confirme|bonne\s+idée|accept|valide|ça\s+marche|c'est\s+ça)/i.test(userText.trim());
+    const isNon = /^(?:non|annule|stop|laisse.tomber|pas.maintenant|change|pas\s+encore|attends?|en\s+fait\s+non|finalement\s+non|pas\s+comme\s+ça|non\s+merci|ignore|laisse\s+tomber)/i.test(userText.trim());
     if (isOui) {
       stopListening();
       addMessage('user', userText);
@@ -1090,10 +1212,13 @@ async function sendMessage(userText) {
   stopListening();
   addMessage('user', userText);
 
+  // Préfixe "isis" retiré pour l'analyse d'intention (ex: "isis, mémorise que...")
+  const ut = userText.replace(/^(?:isis[,!?]?\s+|hey\s+isis[,!?]?\s+)/i, '').trim();
+
   // ── LOI 6 : Mémorisation explicite ──
-  const wantsMemorize = /^(?:mémorise|souviens.toi|retiens|enregistre)(?: que)?[: ]+/i.test(userText);
-  const wantsShowMem  = /qu[e']?(?:est.ce que tu sais|est.ce que tu mémorises|as.tu mémorisé)|(?:montre|affiche|liste).{0,10}(?:ta|ma)?\s*mémoire|qu(?:oi|'est-ce que) tu sais de moi|ce que tu sais de moi/i.test(userText);
-  const wantsForget   = /^(?:oublie|efface|supprime)(?: que)?[: ]+/i.test(userText);
+  const wantsMemorize = /^(?:mémorise|souviens.toi|retiens|enregistre|note\s+bien|rappelle.toi|garde\s+en\s+mémoire|n'oublie\s+pas)(?: que| bien| ça)?[: ]*/i.test(ut);
+  const wantsShowMem  = /qu[e']?(?:est.ce que tu sais|est.ce que tu mémorises|as.tu mémorisé|tu sais|tu mémorises)|(?:montre|affiche|liste|rappelle.moi).{0,15}(?:ta|ma)?\s*(?:mémoire|profil|ce\s+que)|qu(?:oi|'est.ce\s+que) tu sais|ce que tu sais de moi|ta mémoire|profil mémorisé/i.test(ut);
+  const wantsForget   = /^(?:oublie|efface|supprime|retire|enlève)(?: que)?[: ]*/i.test(ut) || /(?:efface|supprime|retire|enlève)\s+.{0,20}(?:de\s+(?:ta|la)\s*mémoire|de\s+tes\s+souvenirs)/i.test(ut);
 
   if (wantsMemorize) {
     const content = userText.replace(/^(?:mémorise|souviens.toi|retiens|enregistre)(?: que)?[: ]*/i, '').trim();
@@ -1153,7 +1278,7 @@ async function sendMessage(userText) {
   }
 
   // ── LOI 6 : Écoute active — "fait / déjà fait / terminé" ──
-  const wantsDone = /^(?:c'est fait|fait|déjà fait|terminé|done|c'est bon c'est fait|j'ai fait|je l'ai fait|envoyé|j'ai envoyé|j'ai appelé|j'ai contacté|réunion faite|réunion terminée)/i.test(userText.trim());
+  const wantsDone = /^(?:c'est fait|c'est bon c'est fait|déjà fait|j'ai fait\s|je l'ai fait|j'ai envoyé|j'ai appelé|j'ai contacté|réunion faite|réunion terminée|terminé(?:\s|$)|done(?:\s|$))/i.test(userText.trim());
   if (wantsDone) {
     const what = userText.replace(/^(?:c'est fait|fait|déjà fait|terminé|done|j'ai fait|je l'ai fait)\s*/i, '').trim() || 'tâche précédente';
     if (!Array.isArray(memory.accompli)) memory.accompli = [];
@@ -1169,9 +1294,49 @@ async function sendMessage(userText) {
   }
 
   // ── Intentions : email / événement / document ──
-  const wantsSendEmail   = /envoie\s+(un\s+)?(mail|email|message)\s+[àa]|écris\s+(un\s+)?(mail|email)\s+[àa]|compose\s+(un\s+)?(email|mail)|rédige.*(mail|email).*et.*(envoie|send)|réponds?\s+(à|au)\s+(cet?\s+)?(email|mail|message)/i.test(userText);
-  const wantsCreateEvent = /planifie|crée\s+(un\s+)?rendez.?vous|ajoute\s+(un\s+)?(événement|rdv)|programme\s+(une\s+)?réunion|bloque\s+(un\s+)?créneau|mets.*(dans|à|sur).*agenda|fixe\s+(un\s+)?(rdv|rendez.?vous|réunion)|prends\s+(un\s+)?rendez.?vous|note\s+(un\s+)?(rdv|rendez.?vous)|nouveau\s+rendez.?vous|nouvel\s+événement|réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)/i.test(userText);
-  const wantsCreateDoc   = /crée\s+(une?\s+)?(document|google.?doc|rapport|fichier)|rédige\s+(une?\s+)?(document|rapport|présentation)/i.test(userText);
+  const wantsSendEmail = /
+    envoie\s*-?\s*(?:lui|leur|moi|nous)?\s*(?:un\s+)?(?:mail|email|message|courriel)
+    |envoie.{0,25}(?:mail|email|message|courriel).{0,25}[àa]\s+\w
+    |(?:écris|rédige|fais|compose|prépare)\s*-?\s*(?:lui|leur)?\s*(?:un\s+)?(?:mail|email|message|courriel)
+    |contacte\s+\w+.{0,20}(?:par\s+(?:mail|email|message)|par\s+écrit)
+    |réponds?\s+(?:à|au|par\s+email|par\s+mail)\s+.{0,30}(?:email|mail|message)
+    |réponds?\s+(?:à|au)\s+(?:cet?|l'|son|leur|ce)?\s*(?:email|mail|message)
+    |envoie\s+(?:ça|ce|cet?|le|la)\s+(?:par\s+)?(?:mail|email)
+    |mail\s+[àa]\s+\w
+    |email\s+[àa]\s+\w
+  /xi.test(ut);
+  const _isEventQuery = /(?:est.ce que j'ai|qu'est.ce que j'ai|j'ai quoi|j'ai (?:une|un)|as.tu|avez.vous|quels? (?:rendez|rdv|réunion))/i.test(userText);
+  const wantsCreateEvent = !_isEventQuery && /
+    planifie
+    |crée\s+(?:(?:\w+[']\s*|\w+\s+))?(rdv|rendez.?vous|événement|réunion|meeting)
+    |crée\s+(?:un|une|le|la|l'|cet?|mon|notre)\s+(rdv|rendez.?vous|événement|réunion)
+    |fais\s+(?:moi\s+)?(?:un|une)\s+(rdv|rendez.?vous|réunion|réservation)
+    |ajoute\s+(?:\w+\s+)?(événement|rdv|rendez.?vous|réunion)
+    |programme\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv|rendez.?vous)
+    |organise\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv)
+    |bloque\s+(?:un\s+)?créneau
+    |mets?\s+.*(dans|à|sur|un).*agenda
+    |mets?\s+(?:un\s+)?(rdv|rendez.?vous|événement|meeting|réunion)
+    |fixe\s+(?:un\s+)?(rdv|rendez.?vous|réunion)
+    |prends?\s+(?:un\s+)?(rdv|rendez.?vous)
+    |pose\s+(?:un\s+)?(rdv|rendez.?vous)
+    |note\s+(?:un\s+)?(rdv|rendez.?vous)
+    |nouveau\s+rendez.?vous|nouvel\s+événement
+    |réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)
+    |réunion\s+avec\s+\w
+    |rendez.?vous\s+avec\s+\w
+    |\brdv\s+avec\s+\w
+    |\brdv\s+(demain|ce\s+soir|lundi|mardi|mercredi|jeudi|vendredi|à\s+\d)
+    |met\s+(?:un\s+)?(rdv|rendez.?vous|événement|réunion)
+  /xi.test(userText);
+  const wantsCreateDoc = /
+    (?:crée|fais|génère|prépare|rédige|écris|produis|rédige)\s+
+    (?:(?:\w+[']\s*|\w+\s+))?
+    (?:document|doc(?!teur)|rapport|fichier|synthèse|fiche|note\s+de\s+(?:service|synthèse)|planning|résumé\s+(?:de|du)|contenu|texte)
+    |nouveau\s+(?:document|doc|rapport|fichier)
+    |google\s*doc
+    |créer\s+(?:un\s+)?(?:document|doc|rapport)
+  /xi.test(ut) && !/budget|procès.verbal|\bpv\b|statuts?|proposition.*(?:site|commercial)|prospect/i.test(ut);
 
   if (wantsSendEmail && CFG.scriptUrl) {
     const thinkId = addThinking();
@@ -1199,11 +1364,11 @@ async function sendMessage(userText) {
       const ev = await preparerEvenement(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-event', data: ev };
-      const d = new Date(ev.debut);
-      const dateStr = d.toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long'}) + ' à ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-      const preview = `Événement à créer :\n"${ev.titre}"\n${dateStr}\n\nJe l'ajoute à ton agenda ?`;
-      addMessage('isis', preview);
-      speak(`Je planifie "${ev.titre}" le ${dateStr}. Je l'ajoute ?`);
+      const d = ev.debut ? new Date(ev.debut) : new Date();
+      const dateStr = d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) + ' à ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      addMessage('isis', `Événement prêt — je l'ajoute ?`);
+      addCard(renderEventCard(ev, false));
+      speak(`Je planifie "${ev.titre}" le ${dateStr}. Je l'ajoute à ton agenda ?`);
     } catch(e) {
       removeThinking(thinkId);
       const m = `Impossible de planifier : ${e.message}`;
@@ -1220,20 +1385,26 @@ async function sendMessage(userText) {
       const doc = await preparerDocument(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Document à créer :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,250)}...\n\nJe crée ce Google Doc ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `Document prêt — je le crée dans Drive ?`);
+      addCard(renderDocCard(doc, null));
       speak(`J'ai rédigé "${doc.titre}". Je crée le Google Doc ?`);
     } catch(e) {
       removeThinking(thinkId);
-      const m = `Impossible de rédiger : ${e.message}`;
-      addMessage('isis', m); speak(m);
+      addMessage('isis', `Impossible de rédiger : ${e.message}`); speak(`Impossible : ${e.message}`);
     }
     setStatus('idle','En attente'); setHolo('idle');
     return;
   }
 
   // ── Budget prévisionnel ──
-  const wantsBudget = /budget\s*(?:prévisionnel|prev|annuel|kemeted|asso)?|budget.*(créer|générer|faire|rédiger|préparer)|prévisionnel.*budget|bilan.*prévisionnel/i.test(userText);
+  const wantsBudget = /
+    budget\s*(?:prévisionnel|prév|prev|annuel|kemeted|asso|de\s+l'asso)?
+    |(?:crée|fais|génère|rédige|prépare|établis)\s+.{0,15}budget
+    |prévisionnel\s+(?:financier|de\s+charges?|de\s+recettes?)
+    |bilan\s+(?:prévisionnel|financier|annuel)
+    |plan\s+(?:financier|budgétaire)
+    |prévision\s+(?:de\s+)?(?:charges?|produits?|recettes?)
+  /xi.test(ut);
   if (wantsBudget && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Génération budget...'); setHolo('thinking');
@@ -1241,20 +1412,26 @@ async function sendMessage(userText) {
       const doc = await preparerBudgetPrevisionnel(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Budget prévisionnel prêt :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `Budget prévisionnel prêt — je le crée dans Drive ?`);
+      addCard(renderDocCard(doc, null));
       speak(`Budget prévisionnel rédigé. Je crée le Google Doc dans Drive ?`);
     } catch(e) {
       removeThinking(thinkId);
-      const m = `Impossible de générer le budget : ${e.message}`;
-      addMessage('isis', m); speak(m);
+      addMessage('isis', `Impossible de générer le budget : ${e.message}`); speak(`Erreur : ${e.message}`);
     }
     setStatus('idle','En attente'); setHolo('idle');
     return;
   }
 
   // ── Procès-verbal / Compte-rendu ──
-  const wantsPV = /(?:procès.verbal|pv\s+de\s+r[eé]union|compte.rendu|cr\s+de\s+r[eé]union|rédige.*(pv|cr|compte.rendu)|prépare.*(pv|compte.rendu))/i.test(userText);
+  const wantsPV = /
+    procès.verbal
+    |\bpv\b\s*(?:de\s+r[eé]union|d[e']|du)?
+    |compte.rendu
+    |\bcr\b\s*(?:de\s+r[eé]union)?
+    |(?:fais|rédige|écris|prépare|crée|génère)\s+
+      (?:le|un|une?)?\s*(?:pv|procès.verbal|compte.rendu|cr)\b
+  /xi.test(ut);
   if (wantsPV && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Rédaction PV...'); setHolo('thinking');
@@ -1262,20 +1439,23 @@ async function sendMessage(userText) {
       const doc = await preparerPV(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Procès-verbal prêt :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `PV de réunion prêt — je le crée dans Drive ?`);
+      addCard(renderDocCard(doc, null));
       speak(`PV de réunion rédigé. Je crée le Google Doc ?`);
     } catch(e) {
       removeThinking(thinkId);
-      const m = `Impossible de rédiger le PV : ${e.message}`;
-      addMessage('isis', m); speak(m);
+      addMessage('isis', `Impossible de rédiger le PV : ${e.message}`); speak(`Erreur : ${e.message}`);
     }
     setStatus('idle','En attente'); setHolo('idle');
     return;
   }
 
   // ── Statuts association ──
-  const wantsStatuts = /(?:statuts?\s+(?:de\s+l'?asso|association|kemeted)|rédige\s+(?:les\s+)?statuts|modifie\s+(?:les\s+)?statuts)/i.test(userText);
+  const wantsStatuts = /
+    (?:rédige|fais|crée|génère|prépare|modifie|mets\s+à\s+jour)\s+(?:les\s+)?statuts?
+    |statuts?\s+(?:de\s+)?(?:l'?asso(?:ciation)?|kemeted|l'association)
+    |statuts?\s+(?:association|loi\s+1901)
+  /xi.test(ut);
   if (wantsStatuts && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Rédaction statuts...'); setHolo('thinking');
@@ -1283,20 +1463,24 @@ async function sendMessage(userText) {
       const doc = await preparerStatuts(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Statuts prêts :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,300)}...\n\nJe crée le Google Doc ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `Statuts prêts — je les crée dans Drive ?`);
+      addCard(renderDocCard(doc, null));
       speak(`Statuts de l'association rédigés. Je crée le Google Doc ?`);
     } catch(e) {
       removeThinking(thinkId);
-      const m = `Impossible de rédiger les statuts : ${e.message}`;
-      addMessage('isis', m); speak(m);
+      addMessage('isis', `Impossible de rédiger les statuts : ${e.message}`); speak(`Erreur : ${e.message}`);
     }
     setStatus('idle','En attente'); setHolo('idle');
     return;
   }
 
   // ── Créer dossier Drive ──
-  const wantsCreateFolder = /crée\s+(un\s+)?dossier|nouveau\s+dossier|crée\s+le\s+dossier|ajoute\s+(un\s+)?dossier/i.test(userText);
+  const wantsCreateFolder = /
+    (?:crée|fais|ajoute|nouveau|nouvelle|crée|organise\s+dans)\s+
+    (?:un\s+|le\s+|un\s+nouveau\s+)?(?:dossier|répertoire|folder)
+    |nouveau\s+(?:dossier|répertoire)
+    |range\s+.{0,20}(?:dans\s+)?(?:un\s+)?(?:dossier|répertoire)
+  /xi.test(ut);
   if (wantsCreateFolder && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Création dossier...'); setHolo('thinking');
@@ -1306,8 +1490,10 @@ async function sendMessage(userText) {
       const result = await fetchGoogleData('create-folder', { nom });
       removeThinking(thinkId);
       if (result.success) {
-        const reply = `Dossier "${result.nom}" créé dans Google Drive.`;
-        addMessage('isis', reply); speak(reply);
+        const reply = `Dossier "${result.nom}" créé. ✓`;
+        addMessage('isis', reply);
+        addCard(renderFolderCard(result.nom, result.url));
+        speak(reply);
         history.push({ role:'model', parts:[{text:reply}] });
       } else {
         const m = `Impossible de créer le dossier : ${result.error}`;
@@ -1323,7 +1509,14 @@ async function sendMessage(userText) {
   }
 
   // ── Modifier / renommer un document ──
-  const wantsEditDoc = /(?:modifie|mets à jour|met à jour|modifie|ajoute dans|ajoute à|écris dans|ajoute du texte|renomme)\s+(?:le\s+)?(?:document|doc|fichier|google doc)/i.test(userText);
+  const wantsEditDoc = /
+    (?:modifie|mets?\s+à\s+jour|complète|corrige|termine|renomme)\s+
+    (?:\w+\s+)*(?:document|doc(?!teur)|fichier|google\s*doc|rapport|note)
+    |(?:ajoute|écris|insère)\s+(?:du\s+(?:contenu|texte)|quelque\s+chose|ça|ce\s+\w+)\s+
+    (?:dans|à|sur)\s+(?:\w+\s+)*(?:document|doc|fichier|rapport)
+    |ajoute\s+(?:dans|à)\s+(?:le|mon|ce|la)\s+(?:document|doc|fichier|rapport|note)
+    |mets?\s+à\s+jour\s+mon\s+(?:document|doc|fichier|rapport)
+  /xi.test(ut);
   if (wantsEditDoc && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Modification document...'); setHolo('thinking');
@@ -1338,11 +1531,16 @@ Demande : "${userText}"`
         nom: info.nom || '', contenu: (info.contenu || userText).substring(0, 2000), mode: info.mode || 'append'
       });
       removeThinking(thinkId);
-      const reply = result.success
-        ? `Document "${result.titre}" modifié.`
-        : `Impossible de modifier : ${result.error}`;
-      addMessage('isis', reply); speak(reply);
-      history.push({ role:'model', parts:[{text:reply}] });
+      if (result.success) {
+        const reply = `Document "${result.titre}" modifié. ✓`;
+        addMessage('isis', reply);
+        addCard(renderDocCard({titre: result.titre, contenu: ''}, result.url));
+        speak(reply);
+        history.push({ role:'model', parts:[{text:reply}] });
+      } else {
+        const m = `Impossible de modifier : ${result.error}`;
+        addMessage('isis', m); speak(m);
+      }
     } catch(e) {
       removeThinking(thinkId);
       const m = `Erreur modification doc : ${e.message}`;
@@ -1353,7 +1551,16 @@ Demande : "${userText}"`
   }
 
   // ── Prospect / Création site web ──
-  const wantsProspect = /(?:prospect|cl coiffure|evea|zilan|mez.?auto|propose.*(site|offre)|rédige.*(proposition|offre.*site|devis.*site)|email.*prospect|contacter.*prospect|site.*pour\s+(?:le|la|un|une))/i.test(userText);
+  const wantsProspect = /
+    prospect
+    |cl\s+coiffure|evea|zilan|mez.?auto
+    |propos(?:e|ition)\s*[-–]?\s*(?:site|offre|devis|commerciale?)
+    |(?:rédige|fais|prépare|écris|crée|génère)\s+(?:une?\s+)?(?:proposition|offre|devis)\s+(?:commerciale?\s+)?(?:de\s+)?(?:site|web|création\s+de\s+site|prestation)
+    |(?:email|mail|message)\s+(?:de\s+)?(?:démarchage|prospection|prospect)
+    |contacter\s+(?:un|ce|le|la|des)\s+(?:prospect|client\s+potentiel|commerce|boutique|restaurant|salon|garage)
+    |site\s+(?:web\s+)?pour\s+(?:le|la|un|une|leur|son|sa)\s+\w
+    |offre\s+(?:commerciale?|de\s+services?|de\s+création)
+  /xi.test(userText);
   if (wantsProspect && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Préparation prospect...'); setHolo('thinking');
@@ -1361,14 +1568,55 @@ Demande : "${userText}"`
       const doc = await preparerSiteProspect(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'create-doc', data: doc };
-      const preview = `Proposition commerciale prête :\n"${doc.titre}"\n\n${(doc.contenu||'').substring(0,350)}...\n\nJe crée le Google Doc ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `Proposition commerciale prête — je la crée dans Drive ?`);
+      addCard(renderDocCard(doc, null));
       speak(`Proposition commerciale rédigée pour ${doc.titre.replace('Proposition site web — ', '')}. Je crée le Google Doc ?`);
     } catch(e) {
       removeThinking(thinkId);
       const m = `Impossible de préparer la proposition : ${e.message}`;
       addMessage('isis', m); speak(m);
     }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // ── Diagnostic système ──
+  const wantsVerif = /v[eé]rifie|diagnostic|tout.*march|est.ce.*opérationn|test.*syst[eè]me|syst[eè]me.*ok|isis.*ok|connexion.*ok|tout.*fonctionne|ça.*marche|accès.*fonctionne/i.test(userText);
+  if (wantsVerif) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Diagnostic...'); setHolo('thinking');
+    const checks = [];
+    const aiKey = CFG.claudeKey || CFG.groqKey || CFG.openaiKey || CFG.apiKey;
+    checks.push({ label:'Intelligence IA', ok:!!aiKey, warn:false,
+      detail: CFG.claudeKey ? 'Claude AI actif' : CFG.groqKey ? 'Groq actif' : CFG.openaiKey ? 'OpenAI actif' : CFG.apiKey ? 'Gemini actif' : 'Aucune clé IA' });
+    if (CFG.scriptUrl) {
+      try {
+        const brief = await fetchGoogleData('brief');
+        const unread = brief.emails?.emails?.filter(e => e.unread).length ?? '?';
+        checks.push({ label:'Gmail', ok:true, warn:false, detail:`${unread} non lu(s)` });
+        checks.push({ label:'Google Agenda', ok:true, warn:false, detail:`${brief.agenda?.events?.length ?? 0} événement(s) à venir` });
+      } catch(e) { checks.push({ label:'Gmail / Agenda', ok:false, warn:false, detail:e.message }); }
+      try {
+        const dr = await fetchGoogleData('drive-recent');
+        checks.push({ label:'Google Drive', ok:true, warn:false, detail:`${dr.files?.length ?? 0} fichiers accessibles` });
+      } catch(e) { checks.push({ label:'Google Drive', ok:false, warn:false, detail:e.message }); }
+      try {
+        const nr = await fetchGoogleData('notion-search', { query: '' });
+        if (nr.error) checks.push({ label:'Notion', ok:false, warn:true, detail:nr.error });
+        else checks.push({ label:'Notion', ok:true, warn:false, detail:`${nr.pages?.length ?? 0} page(s) partagée(s)` });
+      } catch(e) { checks.push({ label:'Notion', ok:false, warn:true, detail:'Non configuré (clé NOTION_KEY manquante)' }); }
+      checks.push({ label:'Apps Script', ok:true, warn:false, detail:'URL configurée' });
+    } else {
+      checks.push({ label:'Gmail / Agenda / Drive / Notion', ok:false, warn:true, detail:'URL Apps Script non configurée (⚙)' });
+    }
+    checks.push({ label:'Mémoire locale', ok:true, warn:false, detail:`${Object.keys(memory).length} champs mémorisés` });
+    removeThinking(thinkId);
+    const allOk = checks.every(c => c.ok || c.warn);
+    const msg = allOk ? 'Diagnostic terminé — tout est opérationnel.' : 'Diagnostic terminé — certains services nécessitent une attention.';
+    addMessage('isis', msg);
+    addCard(renderVerifCard(checks));
+    history.push({ role:'model', parts:[{text:msg}] });
+    speak(msg);
     setStatus('idle','En attente'); setHolo('idle');
     return;
   }
@@ -1448,17 +1696,67 @@ Demande : "${userText}"`
     contextBlock += '\n\n(Pour rédiger des emails, configure l\'URL Google Apps Script dans ⚙ Paramètres.)';
   }
 
+  // ── Notion — déclarations avancées (avant Drive pour le guard) ──
+  const wantsNotionCreate = /
+    (?:crée|ajoute|note|écris|mets?|enregistre|sauvegarde|inscris)\s+
+    (?:une?\s+)?
+    (?:(?:page|note|entrée|tâche|todo|rappel|idée|projet)\s+)?
+    (?:dans|sur|en)\s+notion
+    |notion\s*[:.]\s*.{3,}
+    |ajoute\s+(?:ça|ce\s+\w+|cela|cette\s+info)\s+(?:dans|sur)\s+notion
+    |note\s+ça\s+(?:dans|sur)\s+notion
+  /xi.test(ut);
+
+  const wantsNotionRead = /
+    (?:cherche|trouve|montre|affiche|ouvre|consulte|lis|regarde)\s+(?:dans\s+)?notion
+    |notion\s+(?:page|note|tâche|projet|document|contenu)
+    |(?:mes|tes)\s+(?:pages?|notes?|tâches?|projets?)\s+(?:sur\s+)?notion
+    |qu'?(?:est.ce que|y\s+a.?t.?il)\s+(?:dans|sur)\s+notion
+    |ce\s+que\s+j'ai\s+(?:dans|sur)\s+notion
+  /xi.test(ut);
+
+  const wantsNotionUpdate = /
+    (?:modifie|mets?\s+à\s+jour|complète|ajoute\s+à|actualise|mets?\s+dans)\s+
+    (?:la\s+)?page\s+notion\b
+    |(?:modifie|complète|mets?\s+à\s+jour)\s+(?:ma\s+)?notion\b
+    |ajoute\s+(?:ça|ceci|ce\s+\w+|cela)\s+(?:à\s+la\s+|dans\s+(?:la\s+)?)?page\s+notion
+    |mets?\s+à\s+jour\s+(?:la\s+page\s+)?notion
+  /xi.test(ut);
+
   // ── Google Drive ──
-  const wantsDrive = /drive|fichier|document|doc|sheet|slides|présentation|pdf|dossier/i.test(userText);
-  if (wantsDrive && CFG.scriptUrl) {
+  const wantsDrive = /
+    drive
+    |(?:cherche|trouve|montre|affiche|liste|ouvre|accède\s+à|regarde|montre.?moi)\s+
+    (?:mes\s+)?(?:fichier|doc(?!teur)|document|google\s*doc|rapport|spreadsheet|tableur|présentation|slide)
+    |(?:mes\s+)?(?:fichier|doc(?!teur)|document)\s+(?:sur\s+)?(?:drive|google)
+    |(?:récent|dernier)\s+(?:fichier|doc(?!teur)|document)
+    |quels?\s+(?:fichier|doc(?!teur)|document)
+    |(?:fichier|doc(?!teur))\s+(?:qui\s+)?s'appelle
+  /xi.test(userText) && !wantsNotionCreate && !wantsNotionRead;
+  const wantsDriveSearch = /
+    (?:cherche|trouve|retrouve)\s+(?:le\s+)?(?:fichier|doc(?!teur)|document)\s+
+    |find.?doc
+    |(?:cherche|trouve)\s+\w+\s+(?:dans|sur)\s+(?:drive|google\s*drive)
+  /xi.test(userText);
+  if ((wantsDrive || wantsDriveSearch) && CFG.scriptUrl) {
     setStatus('thinking', 'Consultation Drive...'); setHolo('thinking');
     try {
-      const driveQuery = userText.replace(/drive|cherche|trouve|ouvre|lis|montre|fichier|document|doc|mes|dans/gi, '').trim();
+      const driveQuery = userText.replace(/drive|cherche|trouve|ouvre|lis|montre|liste|mes|dans|fichier|document|doc/gi, '').trim();
       const action = driveQuery.length > 2 ? 'drive-search' : 'drive-recent';
       const params = driveQuery.length > 2 ? { query: driveQuery } : {};
       const result = await fetchGoogleData(action, params);
       if (result.files?.length > 0) {
-        contextBlock += `\n\n--- FICHIERS GOOGLE DRIVE ---\n${JSON.stringify(result.files, null, 2)}\nInstruction : cite les noms des fichiers naturellement avec leur type.`;
+        // Affichage direct avec cartes cliquables
+        addCard(renderFilesCard(result.files, driveQuery.length > 2 ? driveQuery : ''));
+        contextBlock += `\n\n(Drive : ${result.files.length} fichier(s) affiché(s) avec liens cliquables dans l'interface. Noms : ${result.files.map(f=>f.nom).join(', ')})`;
+        // Si demande simple "montre mes fichiers", on peut retourner directement
+        if (/^(?:montre|affiche|liste|voir)\s+(?:mes\s+)?(?:fichier|doc|document|drive)/i.test(userText.trim())) {
+          const r = `${result.files.length} fichier(s) dans ton Drive.`;
+          speak(r); addMessage('isis', r);
+          history.push({ role:'model', parts:[{text:r}] });
+          setStatus('idle','En attente'); setHolo('idle');
+          return;
+        }
       } else {
         contextBlock += `\n\n(Drive "${driveQuery}" : aucun fichier trouvé.)`;
       }
@@ -1467,25 +1765,103 @@ Demande : "${userText}"`
     }
   }
 
-  // ── Notion ──
-  const wantsNotion = /notion|note|page|mémo/i.test(userText);
-  if (wantsNotion && CFG.scriptUrl) {
+  // ── Notion (actions) ──
+  if (wantsNotionCreate && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Création Notion...'); setHolo('thinking');
+    try {
+      const contenuNotion = ut.replace(/(?:crée|ajoute|note|écris|mets?|enregistre|sauvegarde|inscris)\s+(?:une?\s+)?(?:(?:page|note|entrée|tâche|todo|rappel|idée|projet)\s+)?(?:dans|sur|en)\s+notion[:\s]*/i, '').trim()
+                              || ut.replace(/notion\s*[:.]\s*/i, '').trim();
+      const titreNotion = await callAIOneShot(`Extrais ou génère un titre court (5 mots max) pour cette note Notion. Réponds UNIQUEMENT le titre, rien d'autre : "${contenuNotion}"`).then(r => r.trim().replace(/["""]/g,''));
+      const result = await fetchGoogleData('notion-create', { titre: titreNotion, contenu: contenuNotion });
+      removeThinking(thinkId);
+      if (result.success) {
+        const reply = `Page Notion "${titreNotion}" créée. ✓`;
+        addMessage('isis', reply);
+        addCard(renderNotionCard(titreNotion, result.url, contenuNotion));
+        speak(reply);
+        history.push({ role:'model', parts:[{text:reply}] });
+      } else {
+        const m = `Notion inaccessible : ${result.error}`;
+        addMessage('isis', m); speak(m);
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Erreur Notion : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (wantsNotionRead && CFG.scriptUrl) {
     setStatus('thinking', 'Consultation Notion...'); setHolo('thinking');
     try {
-      const searchQuery = userText.replace(/notion|cherche|trouve|dans|crée|ajoute|note|page|document|tâche/gi, '').trim();
-      if (searchQuery.length > 2) {
-        const result = await fetchGoogleData('notion-search', { query: searchQuery });
-        if (result.pages?.length > 0) {
-          contextBlock += `\n\n--- PAGES NOTION TROUVÉES ---\n${JSON.stringify(result.pages, null, 2)}\nInstruction : cite les titres naturellement.`;
-        } else if (result.error) {
-          contextBlock += `\n\n(Notion : ${result.error})`;
-        } else {
-          contextBlock += `\n\n(Notion "${searchQuery}" : aucune page trouvée.)`;
-        }
+      const searchQuery = ut.replace(/(?:cherche|trouve|montre|affiche|ouvre|consulte|lis|regarde)\s+(?:dans\s+)?notion|notion\s+(?:page|note|tâche|projet)|(?:mes|tes)\s+(?:pages?|notes?|tâches?|projets?)\s+(?:sur\s+)?notion/gi, '').trim();
+      const result = await fetchGoogleData('notion-search', { query: searchQuery });
+      if (result.pages?.length > 0) {
+        addCard(renderNotionFilesCard(result.pages, searchQuery));
+        const reply = `${result.pages.length} page(s) trouvée(s) dans Notion.`;
+        addMessage('isis', reply); speak(reply);
+        history.push({ role:'model', parts:[{text:reply}] });
+      } else if (result.error) {
+        const m = `Notion : ${result.error}`;
+        addMessage('isis', m); speak(m);
+      } else {
+        const m = `Aucune page Notion trouvée${searchQuery ? ` pour "${searchQuery}"` : ''}.`;
+        addMessage('isis', m); speak(m);
       }
     } catch(err) {
-      contextBlock += `\n\n(Notion indisponible : ${err.message})`;
+      const m = `Notion indisponible : ${err.message}`;
+      addMessage('isis', m); speak(m);
     }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (wantsNotionUpdate && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Mise à jour Notion...'); setHolo('thinking');
+    try {
+      const contenuAjout = ut.replace(/(?:modifie|mets?\s+à\s+jour|complète|ajoute\s+à|actualise|mets?\s+dans)\s+(?:la\s+)?page\s+notion\b|(?:modifie|complète|mets?\s+à\s+jour)\s+(?:ma\s+)?notion\b|ajoute\s+(?:ça|ceci|ce\s+\w+|cela)\s+(?:à\s+la\s+|dans\s+(?:la\s+)?)?page\s+notion|mets?\s+à\s+jour\s+(?:la\s+page\s+)?notion/gi, '').trim();
+      // Cherche la page la plus récente pour la mettre à jour
+      const searchRes = await fetchGoogleData('notion-search', { query: '' });
+      removeThinking(thinkId);
+      if (searchRes.error || !searchRes.pages?.length) {
+        const m = 'Aucune page Notion trouvée à mettre à jour.';
+        addMessage('isis', m); speak(m);
+      } else {
+        const target = searchRes.pages[0];
+        const upRes = await fetchGoogleData('notion-update', { id: target.id, contenu: contenuAjout });
+        if (upRes.success) {
+          const reply = `Page "${target.titre}" mise à jour dans Notion. ✓`;
+          addMessage('isis', reply);
+          addCard(renderNotionCard(target.titre, target.url, contenuAjout));
+          speak(reply);
+          history.push({ role:'model', parts:[{text:reply}] });
+        } else {
+          const m = `Mise à jour impossible : ${upRes.error}`;
+          addMessage('isis', m); speak(m);
+        }
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Erreur Notion update : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  // Notion passif (dans contextBlock si la demande est mixte)
+  const wantsNotionPassif = /notion/i.test(ut) && !wantsNotionCreate && !wantsNotionRead && !wantsNotionUpdate;
+  if (wantsNotionPassif && CFG.scriptUrl) {
+    try {
+      const result = await fetchGoogleData('notion-search', { query: ut.replace(/notion/gi,'').trim() });
+      if (result.pages?.length > 0) {
+        contextBlock += `\n\n--- PAGES NOTION ---\n${result.pages.map(p=>`"${p.titre}" (${p.modifié}) → ${p.url}`).join('\n')}\nInstruction : cite ces pages naturellement dans ta réponse.`;
+      }
+    } catch(err) {}
   }
 
   // FIX : stocke UNIQUEMENT le texte utilisateur dans l'historique (pas le JSON Gmail/Drive)
@@ -1919,6 +2295,151 @@ function addMessage(role, text) {
     </div>`;
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
+}
+
+function addCard(html) {
+  const conv = document.getElementById('conversation');
+  const time = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const div  = document.createElement('div');
+  div.className = 'message isis';
+  div.innerHTML = `<div class="avatar">I</div><div><div class="bubble" style="padding:0;background:transparent;border:none;overflow:hidden;border-radius:12px;">${html}</div><div class="timestamp">${time}</div></div>`;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+}
+
+function renderEventCard(ev, confirmed) {
+  const d = ev.debut ? new Date(ev.debut) : null;
+  const dateStr = d ? d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+  const timeStr = d ? d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const mins = parseInt(ev.rappel, 10) || 30;
+  const rappelStr = mins >= 60 ? `${Math.round(mins/60)}h` : `${mins} min`;
+  const finD = ev.fin ? new Date(ev.fin) : null;
+  const dureeStr = (d && finD) ? ` · ${Math.round((finD-d)/60000)} min` : '';
+  return `<div class="isis-card isis-card-event">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📅</span>
+      <div style="min-width:0">
+        <div class="isis-card-title">${esc(ev.titre||'Événement')}</div>
+        <div class="isis-card-meta">${dateStr} · ${timeStr}${dureeStr}</div>
+        <div class="isis-card-meta">⏰ Rappel ${rappelStr} avant</div>
+      </div>
+    </div>
+    ${ev.description ? `<div class="isis-card-body">${esc(ev.description)}</div>` : ''}
+    ${confirmed ? `<a class="isis-card-link" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">Ouvrir Google Agenda →</a>` : `<div style="padding:8px 14px 10px;font-size:11px;color:var(--text-dim)">Dis "oui" pour confirmer ou "non" pour annuler.</div>`}
+  </div>`;
+}
+
+function renderDocCard(doc, url) {
+  const ext = url ? 'Google Docs' : '';
+  return `<div class="isis-card isis-card-doc">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📄</span>
+      <div style="min-width:0">
+        <div class="isis-card-title">${esc(doc.titre||'Document')}</div>
+        <div class="isis-card-meta">${ext} · ${new Date().toLocaleDateString('fr-FR')}</div>
+      </div>
+    </div>
+    ${doc.contenu ? `<div class="isis-card-body">${esc((doc.contenu||'').substring(0,160))}…</div>` : ''}
+    ${url ? `<a class="isis-card-link green" href="${url}" target="_blank" rel="noopener">Ouvrir dans Google Docs →</a>` : `<div style="padding:8px 14px 10px;font-size:11px;color:var(--text-dim)">Dis "oui" pour créer le document.</div>`}
+  </div>`;
+}
+
+function renderFolderCard(nom, url) {
+  return `<div class="isis-card isis-card-folder">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📁</span>
+      <div>
+        <div class="isis-card-title">${esc(nom)}</div>
+        <div class="isis-card-meta">Google Drive · Dossier créé</div>
+      </div>
+    </div>
+    <a class="isis-card-link" style="border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.1)" href="${url}" target="_blank" rel="noopener">Ouvrir dans Google Drive →</a>
+  </div>`;
+}
+
+function renderFilesCard(files, query) {
+  const iconOf = t => ({
+    'Google Doc':'📝','Google Sheet':'📊','Google Slides':'🎞️',
+    'Google Form':'📋','PDF':'📕','Image':'🖼️','Dossier':'📁',
+  }[t] || '📄');
+  const items = files.slice(0,8).map(f =>
+    `<a class="isis-file-item" href="${f.url}" target="_blank" rel="noopener">
+      <span class="isis-file-icon">${iconOf(f.type)}</span>
+      <span class="isis-file-name">${esc(f.nom)}</span>
+      <span class="isis-file-badge">${esc(f.type||'')}</span>
+    </a>`
+  ).join('');
+  const title = query ? `Résultats · "${esc(query)}"` : 'Fichiers récents';
+  return `<div class="isis-card">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📂</span>
+      <div>
+        <div class="isis-card-title">${title}</div>
+        <div class="isis-card-meta">Google Drive · ${files.length} fichier(s)</div>
+      </div>
+    </div>
+    <div class="isis-file-list">${items}</div>
+  </div>`;
+}
+
+function renderVerifCard(checks) {
+  const rows = checks.map(({label, ok, warn, detail}) => {
+    const icon  = ok ? '✅' : warn ? '⚠️' : '❌';
+    const color = ok ? '#22c55e' : warn ? '#f59e0b' : '#ef4444';
+    return `<div class="isis-verif-row">
+      <span class="isis-verif-icon">${icon}</span>
+      <span class="isis-verif-label" style="color:${color}">${esc(label)}</span>
+      <span class="isis-verif-status">${esc(detail)}</span>
+    </div>`;
+  }).join('');
+  return `<div class="isis-card isis-card-verif">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">🔍</span>
+      <div>
+        <div class="isis-card-title">Diagnostic Système ISIS</div>
+        <div class="isis-card-meta">${new Date().toLocaleTimeString('fr-FR')}</div>
+      </div>
+    </div>
+    ${rows}
+  </div>`;
+}
+
+function renderNotionCard(titre, url, contenu) {
+  const preview = contenu ? esc(contenu.substring(0, 120)) + (contenu.length > 120 ? '…' : '') : '';
+  const link = url ? `<a class="isis-card-link notion-link" href="${esc(url)}" target="_blank" rel="noopener">↗ Ouvrir dans Notion</a>` : '';
+  return `<div class="isis-card isis-card-notion">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📝</span>
+      <div>
+        <div class="isis-card-title">${esc(titre)}</div>
+        <div class="isis-card-meta">Notion · ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>
+    ${preview ? `<div class="isis-card-body" style="font-size:12px;color:var(--text-muted);padding:8px 14px;border-top:1px solid var(--border)">${preview}</div>` : ''}
+    ${link}
+  </div>`;
+}
+
+function renderNotionFilesCard(pages, query) {
+  const items = pages.map(p => {
+    const url  = p.url  || p.link || '#';
+    const title= p.titre || p.title || p.nom || 'Sans titre';
+    const date = p.modifié || p.modified || '';
+    return `<a class="isis-file-item" href="${esc(url)}" target="_blank" rel="noopener">
+      <span style="font-size:16px">📄</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</span>
+      ${date ? `<span style="font-size:10px;color:var(--text-muted);flex-shrink:0">${esc(date)}</span>` : ''}
+    </a>`;
+  }).join('');
+  return `<div class="isis-card isis-card-notion" style="padding:12px 14px">
+    <div class="isis-card-header" style="margin-bottom:8px">
+      <span class="isis-card-icon">📝</span>
+      <div>
+        <div class="isis-card-title">${pages.length} page(s) Notion${query ? ` · "${esc(query)}"` : ''}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+  </div>`;
 }
 
 function addThinking() {

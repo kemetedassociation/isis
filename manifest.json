@@ -1,23 +1,52 @@
 {
   "name": "ISIS — Assistant Personnel",
   "short_name": "ISIS",
-  "description": "Assistant personnel IA proactif",
-  "start_url": ".",
-  "scope": ".",
+  "description": "Assistant personnel IA de Khadim Fall — KEMETED",
+  "id": "/isis-kemeted/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#080d1a",
-  "theme_color": "#00c8ff",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#050916",
+  "theme_color": "#050916",
+  "prefer_related_applications": false,
+  "lang": "fr",
+  "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda aujourd'hui",
+      "short_name": "Agenda",
+      "description": "Voir l'agenda du jour",
+      "url": "./?action=agenda",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nouveau message",
+      "short_name": "Message",
+      "description": "Parler à ISIS",
+      "url": "./?action=chat",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
