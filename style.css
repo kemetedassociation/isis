@@ -566,6 +566,31 @@ body {
 .isis-card-folder { border-left: 3px solid var(--amber); }
 .isis-card-verif  { border-left: 3px solid var(--accent); }
 .isis-card-notion { border-left: 3px solid var(--notion); }
+.isis-morning-brief { border-left: 3px solid #f59e0b; }
+
+/* ── Brief du matin ── */
+.mbf-body { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+.mbf-section {
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--accent); margin: 8px 0 4px; padding-bottom: 3px;
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+}
+.mbf-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0; font-size: 12.5px;
+}
+.mbf-key { color: var(--text-dim); flex: 1; min-width: 0; }
+.mbf-val { color: var(--text); font-weight: 600; text-align: right; }
+.mbf-chg { font-size: 11px; font-weight: 700; min-width: 52px; text-align: right; }
+.mbf-chg.up { color: #34d399; }
+.mbf-chg.dn { color: #f87171; }
+.mbf-sub { font-size: 10.5px; color: var(--text-muted); padding: 2px 0 4px; }
+.mbf-forecast {
+  font-size: 12px; color: var(--text-dim); line-height: 1.55;
+  background: rgba(0,212,255,0.04); border-radius: 8px;
+  padding: 8px 10px; margin-top: 4px;
+  border: 1px solid rgba(0,212,255,0.08);
+}
 
 .isis-card-header {
   display: flex; align-items: flex-start; gap: 10px;

@@ -569,7 +569,7 @@ function showApp() {
   // Initialisation mémoire KEMETED au premier lancement
   if (!memory.kemeted_init) {
     memory.kemeted_init   = true;
-    memory.prenom         = memory.prenom      || 'Khadim';
+    memory.prenom         = 'Mass';
     memory.entreprise     = memory.entreprise  || 'KEMETED & ASSOCIATION';
     memory.ville          = memory.ville       || 'Besançon, 25000 (+ coopération Sénégal)';
     memory.projet         = memory.projet      || 'KEMETED — écosystème culturel, entrepreneurial et solidaire Afrique-Europe';
@@ -594,10 +594,14 @@ function showApp() {
     memory.budget_2025_2026 = 'Charges: 16 475€ | Produits: 16 500€ | Résultat: +25€';
     localStorage.setItem('isis_memory', JSON.stringify(memory));
   }
+  // Force toujours le prénom Mass
+  memory.prenom = 'Mass';
+  memory.portefeuille = memory.portefeuille || 'Solana, Bitcoin, Ethereum, Apple, Tesla, Nvidia';
+  localStorage.setItem('isis_memory', JSON.stringify(memory));
 
-  // Met à jour le sous-titre avec le prénom
+  // Met à jour le sous-titre
   const sub = document.getElementById('appSubtitle');
-  if (sub && memory.prenom) sub.textContent = `Bonjour ${memory.prenom}`;
+  if (sub) sub.textContent = `Bonjour Mass`;
 
   requestAnimationFrame(() => {
     setTimeout(() => {
@@ -606,11 +610,48 @@ function showApp() {
     }, 80);
   });
 
+  // Salutation + brief du matin
   const h = new Date().getHours();
-  const greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  const intro = `${greet}. ISIS en ligne. Je vérifie ta situation.`;
+  const greet = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const intro = `${greet} Mass. ISIS en ligne — je prépare ton brief du matin.`;
   addMessage('isis', intro);
-  setTimeout(() => speak(intro, () => checkEtatInitial()), 800);
+  speak(intro);
+
+  setTimeout(async () => {
+    const thinkId = addThinking();
+    const brief = await fetchMorningBrief().catch(() => ({ weather: null, market: null }));
+
+    // Pronostic IA basé sur les prix réels
+    let forecast = null;
+    if (CFG.claudeKey || CFG.groqKey || CFG.openaiKey || CFG.apiKey) {
+      try {
+        let ctx = 'Cours temps réel : ';
+        const cr = brief.market?.crypto;
+        const st = brief.market?.stocks;
+        if (cr?.bitcoin)  ctx += `Bitcoin ${cr.bitcoin.eur?.toLocaleString('fr-FR')}€ (${cr.bitcoin.eur_24h_change?.toFixed(2)}% 24h). `;
+        if (cr?.ethereum) ctx += `Ethereum ${cr.ethereum.eur?.toLocaleString('fr-FR')}€ (${cr.ethereum.eur_24h_change?.toFixed(2)}% 24h). `;
+        if (cr?.solana)   ctx += `Solana ${cr.solana.eur?.toLocaleString('fr-FR')}€ (${cr.solana.eur_24h_change?.toFixed(2)}% 24h). `;
+        if (st?.AAPL)     ctx += `Apple $${st.AAPL.price?.toFixed(2)} (${st.AAPL.change?.toFixed(2)}%). `;
+        if (st?.TSLA)     ctx += `Tesla $${st.TSLA.price?.toFixed(2)} (${st.TSLA.change?.toFixed(2)}%). `;
+        if (st?.NVDA)     ctx += `Nvidia $${st.NVDA.price?.toFixed(2)} (${st.NVDA.change?.toFixed(2)}%). `;
+        forecast = await callAIOneShot(
+          `${ctx}\nMass détient : Solana, Bitcoin, Ethereum (crypto) + Apple, Tesla, Nvidia (actions). Donne un pronostic direct en 4-5 lignes : tendance du jour, ce qui est à surveiller, position à renforcer ou alléger. Ton style : précis, confiant, sans disclaimer juridique.`
+        ).catch(() => null);
+      } catch(e) {}
+    }
+
+    removeThinking(thinkId);
+    addCard(renderMorningBriefCard(brief, forecast));
+
+    // Résumé vocal
+    const w = brief.weather;
+    const btc = brief.market?.crypto?.bitcoin;
+    let voiceMsg = w ? `${w.temp} degrés à ${w.city}, ${(w.desc || '').toLowerCase()}. ` : '';
+    if (btc) voiceMsg += `Bitcoin à ${btc.eur?.toLocaleString('fr-FR')} euros. `;
+    if (voiceMsg.trim()) speak(voiceMsg);
+
+    await checkEtatInitial();
+  }, 600);
 }
 
 // ── SETUP INITIAL ──
@@ -650,6 +691,105 @@ function saveSetup() {
 }
 
 // ── CHECK PROACTIF AU DÉMARRAGE ──
+// ================================================================
+//  BRIEF DU MATIN — Météo + Marchés + Pronostic
+// ================================================================
+async function fetchMorningBrief() {
+  const [weather, market] = await Promise.allSettled([fetchWeather(), fetchMarketPrices()]);
+  return {
+    weather: weather.status === 'fulfilled' ? weather.value : null,
+    market:  market.status  === 'fulfilled' ? market.value  : null
+  };
+}
+
+async function fetchWeather() {
+  const city = (memory.ville || 'Besançon').split(',')[0].trim();
+  const r = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`, { signal: AbortSignal.timeout(7000) });
+  if (!r.ok) throw new Error('weather unavailable');
+  const d = await r.json();
+  const c = d.current_condition?.[0];
+  const desc = c?.lang_fr?.[0]?.value || c?.weatherDesc?.[0]?.value || '';
+  return { city, temp: parseInt(c?.temp_C || 0), feels: parseInt(c?.FeelsLikeC || 0), humidity: c?.humidity || '?', wind: c?.windspeedKmph || '?', desc };
+}
+
+async function fetchMarketPrices() {
+  // Crypto via CoinGecko (gratuit, pas de clé, CORS OK)
+  const cryptoR = await fetch(
+    'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=eur&include_24hr_change=true',
+    { signal: AbortSignal.timeout(7000) }
+  );
+  const crypto = cryptoR.ok ? await cryptoR.json() : {};
+
+  // Actions via Yahoo Finance (tente, échoue silencieusement si CORS bloqué)
+  const stocks = {};
+  await Promise.allSettled(['AAPL','TSLA','NVDA'].map(async t => {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const meta = (await r.json()).chart?.result?.[0]?.meta;
+      if (meta) stocks[t] = { price: meta.regularMarketPrice, change: meta.regularMarketChangePercent };
+    }
+  }));
+  return { crypto, stocks };
+}
+
+function renderMorningBriefCard(brief, forecast) {
+  const date = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const wIcons = { 'Ensoleill':'☀️', 'Nuageux':'☁️', 'Partiell':'⛅', 'Pluie':'🌧️', 'Orage':'⛈️', 'Neige':'❄️', 'Brouill':'🌫️', 'Couvert':'🌥️' };
+
+  // Météo
+  let wHtml = '';
+  if (brief?.weather) {
+    const w = brief.weather;
+    let icon = '🌡️';
+    for (const [k, v] of Object.entries(wIcons)) { if ((w.desc || '').includes(k)) { icon = v; break; } }
+    wHtml = `<div class="mbf-row"><span class="mbf-key">${icon} ${w.city}</span><span class="mbf-val">${w.temp}°C · <em>${w.desc}</em></span></div><div class="mbf-sub">Ressenti ${w.feels}°C · Humidité ${w.humidity}% · Vent ${w.wind} km/h</div>`;
+  }
+
+  // Crypto
+  let cHtml = '';
+  const cr = brief?.market?.crypto;
+  if (cr) {
+    const coins = [{ id:'bitcoin', label:'Bitcoin', sym:'₿' }, { id:'ethereum', label:'Ethereum', sym:'Ξ' }, { id:'solana', label:'Solana', sym:'◎' }].filter(c => cr[c.id]);
+    if (coins.length) {
+      cHtml = `<div class="mbf-section">💰 Crypto</div>` + coins.map(c => {
+        const chg = (cr[c.id].eur_24h_change || 0).toFixed(2);
+        const up = chg >= 0;
+        return `<div class="mbf-row"><span class="mbf-key">${c.sym} ${c.label}</span><span class="mbf-val">${cr[c.id].eur?.toLocaleString('fr-FR')} €</span><span class="mbf-chg ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(chg)}%</span></div>`;
+      }).join('');
+    }
+  }
+
+  // Actions
+  let sHtml = '';
+  const st = brief?.market?.stocks;
+  if (st && Object.keys(st).length) {
+    const stocks = [{ sym:'AAPL', label:'Apple 🍎' }, { sym:'TSLA', label:'Tesla ⚡' }, { sym:'NVDA', label:'Nvidia 🟢' }].filter(s => st[s.sym]);
+    if (stocks.length) {
+      sHtml = `<div class="mbf-section">📊 Actions</div>` + stocks.map(s => {
+        const chg = (st[s.sym].change || 0).toFixed(2);
+        const up = chg >= 0;
+        return `<div class="mbf-row"><span class="mbf-key">${s.label}</span><span class="mbf-val">$${st[s.sym].price?.toFixed(2)}</span><span class="mbf-chg ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(chg)}%</span></div>`;
+      }).join('');
+    }
+  }
+
+  // Pronostic ISIS
+  const fHtml = forecast
+    ? `<div class="mbf-section">🔮 Pronostic ISIS</div><div class="mbf-forecast">${forecast.replace(/\n/g,'<br>')}</div>`
+    : '';
+
+  // Si aucune donnée marché
+  const noData = !cHtml && !sHtml ? `<div class="mbf-sub" style="margin-top:6px">Données marché indisponibles — vérifier la connexion.</div>` : '';
+
+  return `<div class="isis-card isis-morning-brief">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">🌅</span>
+      <div><div class="isis-card-title">Brief du matin · Mass</div><div class="isis-card-sub">${date}</div></div>
+    </div>
+    <div class="mbf-body">${wHtml}${noData}${cHtml}${sHtml}${fHtml}</div>
+  </div>`;
+}
+
 async function checkEtatInitial() {
   if (!CFG.scriptUrl) return;
   try {
@@ -1334,49 +1474,10 @@ async function sendMessage(userText) {
   }
 
   // ── Intentions : email / événement / document ──
-  const wantsSendEmail = /
-    envoie\s*-?\s*(?:lui|leur|moi|nous)?\s*(?:un\s+)?(?:mail|email|message|courriel)
-    |envoie.{0,25}(?:mail|email|message|courriel).{0,25}[àa]\s+\w
-    |(?:écris|rédige|fais|compose|prépare)\s*-?\s*(?:lui|leur)?\s*(?:un\s+)?(?:mail|email|message|courriel)
-    |contacte\s+\w+.{0,20}(?:par\s+(?:mail|email|message)|par\s+écrit)
-    |réponds?\s+(?:à|au|par\s+email|par\s+mail)\s+.{0,30}(?:email|mail|message)
-    |réponds?\s+(?:à|au)\s+(?:cet?|l'|son|leur|ce)?\s*(?:email|mail|message)
-    |envoie\s+(?:ça|ce|cet?|le|la)\s+(?:par\s+)?(?:mail|email)
-    |mail\s+[àa]\s+\w
-    |email\s+[àa]\s+\w
-  /xi.test(ut);
+  const wantsSendEmail = /envoie\s*-?\s*(?:lui|leur|moi|nous)?\s*(?:un\s+)?(?:mail|email|message|courriel)|envoie.{0,25}(?:mail|email|message|courriel).{0,25}[àa]\s+\w|(?:écris|rédige|fais|compose|prépare)\s*-?\s*(?:lui|leur)?\s*(?:un\s+)?(?:mail|email|message|courriel)|contacte\s+\w+.{0,20}(?:par\s+(?:mail|email|message)|par\s+écrit)|réponds?\s+(?:à|au|par\s+email|par\s+mail)\s+.{0,30}(?:email|mail|message)|réponds?\s+(?:à|au)\s+(?:cet?|l'|son|leur|ce)?\s*(?:email|mail|message)|envoie\s+(?:ça|ce|cet?|le|la)\s+(?:par\s+)?(?:mail|email)|mail\s+[àa]\s+\w|email\s+[àa]\s+\w/i.test(ut);
   const _isEventQuery = /(?:est.ce que j'ai|qu'est.ce que j'ai|j'ai quoi|j'ai (?:une|un)|as.tu|avez.vous|quels? (?:rendez|rdv|réunion))/i.test(userText);
-  const wantsCreateEvent = !_isEventQuery && /
-    planifie
-    |crée\s+(?:(?:\w+[']\s*|\w+\s+))?(rdv|rendez.?vous|événement|réunion|meeting)
-    |crée\s+(?:un|une|le|la|l'|cet?|mon|notre)\s+(rdv|rendez.?vous|événement|réunion)
-    |fais\s+(?:moi\s+)?(?:un|une)\s+(rdv|rendez.?vous|réunion|réservation)
-    |ajoute\s+(?:\w+\s+)?(événement|rdv|rendez.?vous|réunion)
-    |programme\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv|rendez.?vous)
-    |organise\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv)
-    |bloque\s+(?:un\s+)?créneau
-    |mets?\s+.*(dans|à|sur|un).*agenda
-    |mets?\s+(?:un\s+)?(rdv|rendez.?vous|événement|meeting|réunion)
-    |fixe\s+(?:un\s+)?(rdv|rendez.?vous|réunion)
-    |prends?\s+(?:un\s+)?(rdv|rendez.?vous)
-    |pose\s+(?:un\s+)?(rdv|rendez.?vous)
-    |note\s+(?:un\s+)?(rdv|rendez.?vous)
-    |nouveau\s+rendez.?vous|nouvel\s+événement
-    |réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)
-    |réunion\s+avec\s+\w
-    |rendez.?vous\s+avec\s+\w
-    |\brdv\s+avec\s+\w
-    |\brdv\s+(demain|ce\s+soir|lundi|mardi|mercredi|jeudi|vendredi|à\s+\d)
-    |met\s+(?:un\s+)?(rdv|rendez.?vous|événement|réunion)
-  /xi.test(userText);
-  const wantsCreateDoc = /
-    (?:crée|fais|génère|prépare|rédige|écris|produis|rédige)\s+
-    (?:(?:\w+[']\s*|\w+\s+))?
-    (?:document|doc(?!teur)|rapport|fichier|synthèse|fiche|note\s+de\s+(?:service|synthèse)|planning|résumé\s+(?:de|du)|contenu|texte)
-    |nouveau\s+(?:document|doc|rapport|fichier)
-    |google\s*doc
-    |créer\s+(?:un\s+)?(?:document|doc|rapport)
-  /xi.test(ut) && !/budget|procès.verbal|\bpv\b|statuts?|proposition.*(?:site|commercial)|prospect/i.test(ut);
+  const wantsCreateEvent = !_isEventQuery && /planifie|crée\s+(?:(?:\w+[']\s*|\w+\s+))?(rdv|rendez.?vous|événement|réunion|meeting)|crée\s+(?:un|une|le|la|l'|cet?|mon|notre)\s+(rdv|rendez.?vous|événement|réunion)|fais\s+(?:moi\s+)?(?:un|une)\s+(rdv|rendez.?vous|réunion|réservation)|ajoute\s+(?:\w+\s+)?(événement|rdv|rendez.?vous|réunion)|programme\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv|rendez.?vous)|organise\s+(?:une?\s+)?(réunion|rencontre|meeting|rdv)|bloque\s+(?:un\s+)?créneau|mets?\s+.*(dans|à|sur|un).*agenda|mets?\s+(?:un\s+)?(rdv|rendez.?vous|événement|meeting|réunion)|fixe\s+(?:un\s+)?(rdv|rendez.?vous|réunion)|prends?\s+(?:un\s+)?(rdv|rendez.?vous)|pose\s+(?:un\s+)?(rdv|rendez.?vous)|note\s+(?:un\s+)?(rdv|rendez.?vous)|nouveau\s+rendez.?vous|nouvel\s+événement|réunion\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|ce\s+soir)|réunion\s+avec\s+\w|rendez.?vous\s+avec\s+\w|\brdv\s+avec\s+\w|\brdv\s+(demain|ce\s+soir|lundi|mardi|mercredi|jeudi|vendredi|à\s+\d)|met\s+(?:un\s+)?(rdv|rendez.?vous|événement|réunion)/i.test(userText);
+  const wantsCreateDoc = /(?:crée|fais|génère|prépare|rédige|écris|produis)\s+(?:(?:\w+[']\s*|\w+\s+))?(?:document|doc(?!teur)|rapport|fichier|synthèse|fiche|note\s+de\s+(?:service|synthèse)|planning|résumé\s+(?:de|du)|contenu|texte)|nouveau\s+(?:document|doc|rapport|fichier)|google\s*doc|créer\s+(?:un\s+)?(?:document|doc|rapport)/i.test(ut) && !/budget|procès.verbal|\bpv\b|statuts?|proposition.*(?:site|commercial)|prospect/i.test(ut);
 
   if (wantsSendEmail && CFG.scriptUrl) {
     const thinkId = addThinking();
@@ -1437,14 +1538,7 @@ async function sendMessage(userText) {
   }
 
   // ── Budget prévisionnel ──
-  const wantsBudget = /
-    budget\s*(?:prévisionnel|prév|prev|annuel|kemeted|asso|de\s+l'asso)?
-    |(?:crée|fais|génère|rédige|prépare|établis)\s+.{0,15}budget
-    |prévisionnel\s+(?:financier|de\s+charges?|de\s+recettes?)
-    |bilan\s+(?:prévisionnel|financier|annuel)
-    |plan\s+(?:financier|budgétaire)
-    |prévision\s+(?:de\s+)?(?:charges?|produits?|recettes?)
-  /xi.test(ut);
+  const wantsBudget = /budget\s*(?:prévisionnel|prév|prev|annuel|kemeted|asso|de\s+l'asso)?|(?:crée|fais|génère|rédige|prépare|établis)\s+.{0,15}budget|prévisionnel\s+(?:financier|de\s+charges?|de\s+recettes?)|bilan\s+(?:prévisionnel|financier|annuel)|plan\s+(?:financier|budgétaire)|prévision\s+(?:de\s+)?(?:charges?|produits?|recettes?)/i.test(ut);
   if (wantsBudget && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Génération budget...'); setHolo('thinking');
@@ -1464,14 +1558,7 @@ async function sendMessage(userText) {
   }
 
   // ── Procès-verbal / Compte-rendu ──
-  const wantsPV = /
-    procès.verbal
-    |\bpv\b\s*(?:de\s+r[eé]union|d[e']|du)?
-    |compte.rendu
-    |\bcr\b\s*(?:de\s+r[eé]union)?
-    |(?:fais|rédige|écris|prépare|crée|génère)\s+
-      (?:le|un|une?)?\s*(?:pv|procès.verbal|compte.rendu|cr)\b
-  /xi.test(ut);
+  const wantsPV = /procès.verbal|\bpv\b\s*(?:de\s+r[eé]union|d[e']|du)?|compte.rendu|\bcr\b\s*(?:de\s+r[eé]union)?|(?:fais|rédige|écris|prépare|crée|génère)\s+(?:le|un|une?)?\s*(?:pv|procès.verbal|compte.rendu|cr)\b/i.test(ut);
   if (wantsPV && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Rédaction PV...'); setHolo('thinking');
@@ -1491,11 +1578,7 @@ async function sendMessage(userText) {
   }
 
   // ── Statuts association ──
-  const wantsStatuts = /
-    (?:rédige|fais|crée|génère|prépare|modifie|mets\s+à\s+jour)\s+(?:les\s+)?statuts?
-    |statuts?\s+(?:de\s+)?(?:l'?asso(?:ciation)?|kemeted|l'association)
-    |statuts?\s+(?:association|loi\s+1901)
-  /xi.test(ut);
+  const wantsStatuts = /(?:rédige|fais|crée|génère|prépare|modifie|mets\s+à\s+jour)\s+(?:les\s+)?statuts?|statuts?\s+(?:de\s+)?(?:l'?asso(?:ciation)?|kemeted|l'association)|statuts?\s+(?:association|loi\s+1901)/i.test(ut);
   if (wantsStatuts && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Rédaction statuts...'); setHolo('thinking');
@@ -1515,12 +1598,7 @@ async function sendMessage(userText) {
   }
 
   // ── Créer dossier Drive ──
-  const wantsCreateFolder = /
-    (?:crée|fais|ajoute|nouveau|nouvelle|crée|organise\s+dans)\s+
-    (?:un\s+|le\s+|un\s+nouveau\s+)?(?:dossier|répertoire|folder)
-    |nouveau\s+(?:dossier|répertoire)
-    |range\s+.{0,20}(?:dans\s+)?(?:un\s+)?(?:dossier|répertoire)
-  /xi.test(ut);
+  const wantsCreateFolder = /(?:crée|fais|ajoute|nouveau|nouvelle|organise\s+dans)\s+(?:un\s+|le\s+|un\s+nouveau\s+)?(?:dossier|répertoire|folder)|nouveau\s+(?:dossier|répertoire)|range\s+.{0,20}(?:dans\s+)?(?:un\s+)?(?:dossier|répertoire)/i.test(ut);
   if (wantsCreateFolder && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Création dossier...'); setHolo('thinking');
@@ -1549,14 +1627,7 @@ async function sendMessage(userText) {
   }
 
   // ── Modifier / renommer un document ──
-  const wantsEditDoc = /
-    (?:modifie|mets?\s+à\s+jour|complète|corrige|termine|renomme)\s+
-    (?:\w+\s+)*(?:document|doc(?!teur)|fichier|google\s*doc|rapport|note)
-    |(?:ajoute|écris|insère)\s+(?:du\s+(?:contenu|texte)|quelque\s+chose|ça|ce\s+\w+)\s+
-    (?:dans|à|sur)\s+(?:\w+\s+)*(?:document|doc|fichier|rapport)
-    |ajoute\s+(?:dans|à)\s+(?:le|mon|ce|la)\s+(?:document|doc|fichier|rapport|note)
-    |mets?\s+à\s+jour\s+mon\s+(?:document|doc|fichier|rapport)
-  /xi.test(ut);
+  const wantsEditDoc = /(?:modifie|mets?\s+à\s+jour|complète|corrige|termine|renomme)\s+(?:\w+\s+)*(?:document|doc(?!teur)|fichier|google\s*doc|rapport|note)|(?:ajoute|écris|insère)\s+(?:du\s+(?:contenu|texte)|quelque\s+chose|ça|ce\s+\w+)\s+(?:dans|à|sur)\s+(?:\w+\s+)*(?:document|doc|fichier|rapport)|ajoute\s+(?:dans|à)\s+(?:le|mon|ce|la)\s+(?:document|doc|fichier|rapport|note)|mets?\s+à\s+jour\s+mon\s+(?:document|doc|fichier|rapport)/i.test(ut);
   if (wantsEditDoc && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Modification document...'); setHolo('thinking');
@@ -1591,16 +1662,7 @@ Demande : "${userText}"`
   }
 
   // ── Prospect / Création site web ──
-  const wantsProspect = /
-    prospect
-    |cl\s+coiffure|evea|zilan|mez.?auto
-    |propos(?:e|ition)\s*[-–]?\s*(?:site|offre|devis|commerciale?)
-    |(?:rédige|fais|prépare|écris|crée|génère)\s+(?:une?\s+)?(?:proposition|offre|devis)\s+(?:commerciale?\s+)?(?:de\s+)?(?:site|web|création\s+de\s+site|prestation)
-    |(?:email|mail|message)\s+(?:de\s+)?(?:démarchage|prospection|prospect)
-    |contacter\s+(?:un|ce|le|la|des)\s+(?:prospect|client\s+potentiel|commerce|boutique|restaurant|salon|garage)
-    |site\s+(?:web\s+)?pour\s+(?:le|la|un|une|leur|son|sa)\s+\w
-    |offre\s+(?:commerciale?|de\s+services?|de\s+création)
-  /xi.test(userText);
+  const wantsProspect = /prospect|cl\s+coiffure|evea|zilan|mez.?auto|propos(?:e|ition)\s*[-–]?\s*(?:site|offre|devis|commerciale?)|(?:rédige|fais|prépare|écris|crée|génère)\s+(?:une?\s+)?(?:proposition|offre|devis)\s+(?:commerciale?\s+)?(?:de\s+)?(?:site|web|création\s+de\s+site|prestation)|(?:email|mail|message)\s+(?:de\s+)?(?:démarchage|prospection|prospect)|contacter\s+(?:un|ce|le|la|des)\s+(?:prospect|client\s+potentiel|commerce|boutique|restaurant|salon|garage)|site\s+(?:web\s+)?pour\s+(?:le|la|un|une|leur|son|sa)\s+\w|offre\s+(?:commerciale?|de\s+services?|de\s+création)/i.test(userText);
   if (wantsProspect && CFG.scriptUrl) {
     const thinkId = addThinking();
     setStatus('thinking', 'Préparation prospect...'); setHolo('thinking');
@@ -1737,47 +1799,15 @@ Demande : "${userText}"`
   }
 
   // ── Notion — déclarations avancées (avant Drive pour le guard) ──
-  const wantsNotionCreate = /
-    (?:crée|ajoute|note|écris|mets?|enregistre|sauvegarde|inscris)\s+
-    (?:une?\s+)?
-    (?:(?:page|note|entrée|tâche|todo|rappel|idée|projet)\s+)?
-    (?:dans|sur|en)\s+notion
-    |notion\s*[:.]\s*.{3,}
-    |ajoute\s+(?:ça|ce\s+\w+|cela|cette\s+info)\s+(?:dans|sur)\s+notion
-    |note\s+ça\s+(?:dans|sur)\s+notion
-  /xi.test(ut);
+  const wantsNotionCreate = /(?:crée|ajoute|note|écris|mets?|enregistre|sauvegarde|inscris)\s+(?:une?\s+)?(?:(?:page|note|entrée|tâche|todo|rappel|idée|projet)\s+)?(?:dans|sur|en)\s+notion|notion\s*[:.]\s*.{3,}|ajoute\s+(?:ça|ce\s+\w+|cela|cette\s+info)\s+(?:dans|sur)\s+notion|note\s+ça\s+(?:dans|sur)\s+notion/i.test(ut);
 
-  const wantsNotionRead = /
-    (?:cherche|trouve|montre|affiche|ouvre|consulte|lis|regarde)\s+(?:dans\s+)?notion
-    |notion\s+(?:page|note|tâche|projet|document|contenu)
-    |(?:mes|tes)\s+(?:pages?|notes?|tâches?|projets?)\s+(?:sur\s+)?notion
-    |qu'?(?:est.ce que|y\s+a.?t.?il)\s+(?:dans|sur)\s+notion
-    |ce\s+que\s+j'ai\s+(?:dans|sur)\s+notion
-  /xi.test(ut);
+  const wantsNotionRead = /(?:cherche|trouve|montre|affiche|ouvre|consulte|lis|regarde)\s+(?:dans\s+)?notion|notion\s+(?:page|note|tâche|projet|document|contenu)|(?:mes|tes)\s+(?:pages?|notes?|tâches?|projets?)\s+(?:sur\s+)?notion|qu'?(?:est.ce que|y\s+a.?t.?il)\s+(?:dans|sur)\s+notion|ce\s+que\s+j'ai\s+(?:dans|sur)\s+notion/i.test(ut);
 
-  const wantsNotionUpdate = /
-    (?:modifie|mets?\s+à\s+jour|complète|ajoute\s+à|actualise|mets?\s+dans)\s+
-    (?:la\s+)?page\s+notion\b
-    |(?:modifie|complète|mets?\s+à\s+jour)\s+(?:ma\s+)?notion\b
-    |ajoute\s+(?:ça|ceci|ce\s+\w+|cela)\s+(?:à\s+la\s+|dans\s+(?:la\s+)?)?page\s+notion
-    |mets?\s+à\s+jour\s+(?:la\s+page\s+)?notion
-  /xi.test(ut);
+  const wantsNotionUpdate = /(?:modifie|mets?\s+à\s+jour|complète|ajoute\s+à|actualise|mets?\s+dans)\s+(?:la\s+)?page\s+notion\b|(?:modifie|complète|mets?\s+à\s+jour)\s+(?:ma\s+)?notion\b|ajoute\s+(?:ça|ceci|ce\s+\w+|cela)\s+(?:à\s+la\s+|dans\s+(?:la\s+)?)?page\s+notion|mets?\s+à\s+jour\s+(?:la\s+page\s+)?notion/i.test(ut);
 
   // ── Google Drive ──
-  const wantsDrive = /
-    drive
-    |(?:cherche|trouve|montre|affiche|liste|ouvre|accède\s+à|regarde|montre.?moi)\s+
-    (?:mes\s+)?(?:fichier|doc(?!teur)|document|google\s*doc|rapport|spreadsheet|tableur|présentation|slide)
-    |(?:mes\s+)?(?:fichier|doc(?!teur)|document)\s+(?:sur\s+)?(?:drive|google)
-    |(?:récent|dernier)\s+(?:fichier|doc(?!teur)|document)
-    |quels?\s+(?:fichier|doc(?!teur)|document)
-    |(?:fichier|doc(?!teur))\s+(?:qui\s+)?s'appelle
-  /xi.test(userText) && !wantsNotionCreate && !wantsNotionRead;
-  const wantsDriveSearch = /
-    (?:cherche|trouve|retrouve)\s+(?:le\s+)?(?:fichier|doc(?!teur)|document)\s+
-    |find.?doc
-    |(?:cherche|trouve)\s+\w+\s+(?:dans|sur)\s+(?:drive|google\s*drive)
-  /xi.test(userText);
+  const wantsDrive = /drive|(?:cherche|trouve|montre|affiche|liste|ouvre|accède\s+à|regarde|montre.?moi)\s+(?:mes\s+)?(?:fichier|doc(?!teur)|document|google\s*doc|rapport|spreadsheet|tableur|présentation|slide)|(?:mes\s+)?(?:fichier|doc(?!teur)|document)\s+(?:sur\s+)?(?:drive|google)|(?:récent|dernier)\s+(?:fichier|doc(?!teur)|document)|quels?\s+(?:fichier|doc(?!teur)|document)|(?:fichier|doc(?!teur))\s+(?:qui\s+)?s'appelle/i.test(userText) && !wantsNotionCreate && !wantsNotionRead;
+  const wantsDriveSearch = /(?:cherche|trouve|retrouve)\s+(?:le\s+)?(?:fichier|doc(?!teur)|document)\s+|find.?doc|(?:cherche|trouve)\s+\w+\s+(?:dans|sur)\s+(?:drive|google\s*drive)/i.test(userText);
   if ((wantsDrive || wantsDriveSearch) && CFG.scriptUrl) {
     setStatus('thinking', 'Consultation Drive...'); setHolo('thinking');
     try {
