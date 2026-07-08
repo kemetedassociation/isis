@@ -1,10 +1,10 @@
-// ISIS Service Worker — Cache-first pour fonctionnement hors ligne + PWA valide
-const CACHE = 'isis-v3';
+// ISIS Service Worker v4 — Cache-first + invalidation forcée
+const CACHE = 'isis-v4';
 const STATIC = [
   './',
   './index.html',
-  './style.css',
-  './script.js',
+  './style.css?v=4',
+  './script.js?v=4',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
@@ -31,17 +31,29 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Ignore les requêtes vers des API externes (Google, Groq, etc.)
   if (url.origin !== self.location.origin) return;
   if (e.request.method !== 'GET') return;
+
+  // Pour index.html et script.js : Network-first pour toujours avoir la version fraîche
+  const isCore = STATIC.slice(0, 3).some(f => url.pathname.endsWith(f.replace('./', '/')));
+  if (isCore) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-cache' }).then(res => {
+        if (res && res.status === 200) {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
         if (res && res.status === 200 && res.type !== 'opaque') {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
         }
         return res;
       }).catch(() => caches.match('./index.html'));
