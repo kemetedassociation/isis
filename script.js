@@ -489,12 +489,21 @@ class HoloViz {
 document.addEventListener('DOMContentLoaded', () => {
   if (window.speechSynthesis) window.speechSynthesis.getVoices();
 
-  // Détection iOS — Safari ne supporte pas SpeechRecognition (streaming)
+  // Entrée clavier sur les champs setup → active ISIS directement
+  ['setupClaudeKey','setupOpenaiKey','setupGroqKey','setupScriptUrl'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') saveSetup(); });
+  });
+
+  // Détection iOS — Safari ne supporte pas SpeechRecognition continu
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (isIOS) {
-    document.getElementById('micBtn').style.display = 'none';
-    document.getElementById('convBtn').style.display = 'none';
-    document.getElementById('textInput').placeholder = 'Écrivez votre message à ISIS...';
+    const mic = document.getElementById('micBtn');
+    const conv = document.getElementById('convBtn');
+    const inp  = document.getElementById('textInput');
+    if (mic)  mic.style.display  = 'none';
+    if (conv) conv.style.display = 'none';
+    if (inp)  inp.placeholder    = 'Écrivez votre message à ISIS...';
   }
 
   // Gestion clavier mobile — redimensionne l'app quand le clavier s'ouvre
@@ -511,35 +520,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Scroll au bas quand le clavier s'ouvre sur mobile
-  document.getElementById('textInput').addEventListener('focus', () => {
-    setTimeout(() => {
-      const conv = document.getElementById('conversation');
-      if (conv) conv.scrollTop = conv.scrollHeight;
-    }, 400);
-  });
+  // Scroll bas quand le clavier s'ouvre sur mobile
+  const txtInput = document.getElementById('textInput');
+  if (txtInput) {
+    txtInput.addEventListener('focus', () => {
+      setTimeout(() => {
+        const conv = document.getElementById('conversation');
+        if (conv) conv.scrollTop = conv.scrollHeight;
+      }, 400);
+    });
+  }
 
-  // FIX : vérifie toutes les 4 clés possibles, pas seulement Groq/Gemini
-  const hasKey = CFG.claudeKey || CFG.openaiKey || CFG.groqKey || CFG.apiKey;
-  if (hasKey && hasKey.length > 8) {
-    showApp();
-  } else {
-    document.getElementById('setupOverlay').style.display = 'flex';
+  // Ouvre directement l'app si des clés sont déjà sauvegardées
+  try {
+    const hasKey = CFG.claudeKey || CFG.openaiKey || CFG.groqKey || CFG.apiKey;
+    if (hasKey && hasKey.length > 0) {
+      showApp();
+    } else {
+      const overlay = document.getElementById('setupOverlay');
+      if (overlay) overlay.style.display = 'flex';
+    }
+  } catch(e) {
+    console.error('Init ISIS:', e);
+    const overlay = document.getElementById('setupOverlay');
+    if (overlay) overlay.style.display = 'flex';
   }
 });
 
 function showApp() {
-  document.getElementById('setupOverlay').style.display = 'none';
-  const app = document.getElementById('app');
-  app.style.display = 'flex';
+  // Cacher le setup et afficher l'app EN PREMIER — avant tout le reste
+  const overlay = document.getElementById('setupOverlay');
+  const app     = document.getElementById('app');
+  if (overlay) overlay.style.display = 'none';
+  if (app)     app.style.display     = 'flex';
 
-  document.getElementById('settingsClaudeKey').value = CFG.claudeKey;
-  document.getElementById('settingsOpenaiKey').value = CFG.openaiKey;
-  document.getElementById('settingsGroqKey').value   = CFG.groqKey;
-  document.getElementById('settingsApiKey').value    = CFG.apiKey;
-  document.getElementById('settingsScriptUrl').value = CFG.scriptUrl;
-  document.getElementById('settingsGoals').value     = memory.objectifs || '';
-  document.getElementById('settingsInterests').value = memory.interets  || '';
+  // Peupler le panneau paramètres avec optional chaining pour éviter les crashs
+  try {
+    const s = (id) => document.getElementById(id);
+    if (s('settingsClaudeKey')) s('settingsClaudeKey').value = CFG.claudeKey  || '';
+    if (s('settingsOpenaiKey')) s('settingsOpenaiKey').value = CFG.openaiKey  || '';
+    if (s('settingsGroqKey'))   s('settingsGroqKey').value   = CFG.groqKey    || '';
+    if (s('settingsApiKey'))    s('settingsApiKey').value    = CFG.apiKey     || '';
+    if (s('settingsScriptUrl')) s('settingsScriptUrl').value = CFG.scriptUrl  || '';
+    if (s('settingsGoals'))     s('settingsGoals').value     = memory.objectifs || '';
+    if (s('settingsInterests')) s('settingsInterests').value = memory.interets  || '';
+  } catch(e) { console.warn('Settings panel init:', e.message); }
 
   // Initialisation mémoire KEMETED au premier lancement
   if (!memory.kemeted_init) {
@@ -590,23 +615,38 @@ function showApp() {
 
 // ── SETUP INITIAL ──
 function saveSetup() {
-  const claudeKey = document.getElementById('setupClaudeKey')?.value.trim() || '';
-  const openaiKey = document.getElementById('setupOpenaiKey')?.value.trim() || '';
-  const groqKey   = document.getElementById('setupGroqKey').value.trim();
-  const gemKey    = document.getElementById('setupApiKey')?.value.trim() || '';
-  const url       = document.getElementById('setupScriptUrl').value.trim();
+  const errBox = document.getElementById('setupError');
+  const hideErr = () => { if (errBox) errBox.style.display = 'none'; };
+  const showErr = (msg) => {
+    if (errBox) { errBox.textContent = msg; errBox.style.display = 'block'; }
+    else alert(msg);
+  };
 
-  if (!claudeKey && !openaiKey && !groqKey && !gemKey) {
-    alert('Entre au moins une clé API.\nRecommandé : Claude (console.anthropic.com) ou Groq (console.groq.com — gratuit)');
-    return;
+  try {
+    const s = (id) => document.getElementById(id);
+    const claudeKey = s('setupClaudeKey')?.value.trim() || '';
+    const openaiKey = s('setupOpenaiKey')?.value.trim() || '';
+    const groqKey   = s('setupGroqKey')?.value.trim()   || '';
+    const gemKey    = s('setupApiKey')?.value.trim()    || '';
+    const url       = s('setupScriptUrl')?.value.trim() || '';
+
+    if (!claudeKey && !openaiKey && !groqKey && !gemKey) {
+      showErr('Entre au moins une clé API. Recommandé : Claude (console.anthropic.com) ou Groq (console.groq.com — gratuit).');
+      return;
+    }
+
+    hideErr();
+    if (claudeKey) { CFG.claudeKey = claudeKey; localStorage.setItem('isis_claude_key', claudeKey); }
+    if (openaiKey) { CFG.openaiKey = openaiKey; localStorage.setItem('isis_openai_key', openaiKey); }
+    if (groqKey)   { CFG.groqKey   = groqKey;   localStorage.setItem('isis_groq_key',   groqKey);   }
+    if (gemKey)    { CFG.apiKey    = gemKey;     localStorage.setItem('isis_api_key',    gemKey);    }
+    if (url)       { CFG.scriptUrl = url;        localStorage.setItem('isis_script_url', url);       }
+
+    showApp();
+  } catch(e) {
+    showErr('Erreur inattendue : ' + e.message + ' — Rechargez la page et réessayez.');
+    console.error('saveSetup error:', e);
   }
-
-  if (claudeKey) { CFG.claudeKey = claudeKey; localStorage.setItem('isis_claude_key', claudeKey); }
-  if (openaiKey) { CFG.openaiKey = openaiKey; localStorage.setItem('isis_openai_key', openaiKey); }
-  if (groqKey)   { CFG.groqKey   = groqKey;   localStorage.setItem('isis_groq_key',   groqKey);   }
-  if (gemKey)    { CFG.apiKey    = gemKey;     localStorage.setItem('isis_api_key',    gemKey);    }
-  if (url)       { CFG.scriptUrl = url;        localStorage.setItem('isis_script_url', url);       }
-  showApp();
 }
 
 // ── CHECK PROACTIF AU DÉMARRAGE ──

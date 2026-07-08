@@ -288,6 +288,7 @@ body {
 .icon-btn.conv-btn.active {
   background: var(--green-dim); border-color: var(--green); color: var(--green);
   box-shadow: 0 0 14px var(--green-glow);
+  animation: pulse-border 2s infinite;
 }
 
 
