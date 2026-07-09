@@ -6,11 +6,14 @@
 
 // ── CONFIGURATION ──
 const CFG = {
-  claudeKey : localStorage.getItem('isis_claude_key')  || '',
-  openaiKey : localStorage.getItem('isis_openai_key')  || '',
-  groqKey   : localStorage.getItem('isis_groq_key')    || '',
-  apiKey    : localStorage.getItem('isis_api_key')     || '',
-  scriptUrl : localStorage.getItem('isis_script_url')  || '',
+  claudeKey      : localStorage.getItem('isis_claude_key')       || '',
+  openaiKey      : localStorage.getItem('isis_openai_key')       || '',
+  groqKey        : localStorage.getItem('isis_groq_key')         || '',
+  apiKey         : localStorage.getItem('isis_api_key')          || '',
+  openrouterKey  : localStorage.getItem('isis_openrouter_key')   || '',
+  mistralKey     : localStorage.getItem('isis_mistral_key')      || '',
+  cerebrasKey    : localStorage.getItem('isis_cerebras_key')     || '',
+  scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
 const API_CANDIDATES = [
@@ -559,8 +562,11 @@ function showApp() {
     const s = (id) => document.getElementById(id);
     if (s('settingsClaudeKey')) s('settingsClaudeKey').value = CFG.claudeKey  || '';
     if (s('settingsOpenaiKey')) s('settingsOpenaiKey').value = CFG.openaiKey  || '';
-    if (s('settingsGroqKey'))   s('settingsGroqKey').value   = CFG.groqKey    || '';
-    if (s('settingsApiKey'))    s('settingsApiKey').value    = CFG.apiKey     || '';
+    if (s('settingsGroqKey'))        s('settingsGroqKey').value        = CFG.groqKey        || '';
+    if (s('settingsApiKey'))         s('settingsApiKey').value         = CFG.apiKey         || '';
+    if (s('settingsOpenrouterKey'))  s('settingsOpenrouterKey').value  = CFG.openrouterKey  || '';
+    if (s('settingsMistralKey'))     s('settingsMistralKey').value     = CFG.mistralKey     || '';
+    if (s('settingsCerebrasKey'))    s('settingsCerebrasKey').value    = CFG.cerebrasKey    || '';
     if (s('settingsScriptUrl')) s('settingsScriptUrl').value = CFG.scriptUrl  || '';
     if (s('settingsGoals'))     s('settingsGoals').value     = memory.objectifs || '';
     if (s('settingsInterests')) s('settingsInterests').value = memory.interets  || '';
@@ -853,16 +859,22 @@ function toggleSettings() {
 }
 
 function saveSettingsPanel() {
-  const claudeKey = document.getElementById('settingsClaudeKey').value.trim();
-  const openaiKey = document.getElementById('settingsOpenaiKey').value.trim();
-  const groqKey   = document.getElementById('settingsGroqKey').value.trim();
-  const gemKey    = document.getElementById('settingsApiKey').value.trim();
-  const url       = document.getElementById('settingsScriptUrl').value.trim();
+  const claudeKey      = document.getElementById('settingsClaudeKey').value.trim();
+  const openaiKey      = document.getElementById('settingsOpenaiKey').value.trim();
+  const groqKey        = document.getElementById('settingsGroqKey').value.trim();
+  const gemKey         = document.getElementById('settingsApiKey').value.trim();
+  const openrouterKey  = document.getElementById('settingsOpenrouterKey')?.value.trim() || '';
+  const mistralKey     = document.getElementById('settingsMistralKey')?.value.trim()    || '';
+  const cerebrasKey    = document.getElementById('settingsCerebrasKey')?.value.trim()   || '';
+  const url            = document.getElementById('settingsScriptUrl').value.trim();
 
-  if (claudeKey) { CFG.claudeKey = claudeKey; localStorage.setItem('isis_claude_key', claudeKey); }
-  if (openaiKey) { CFG.openaiKey = openaiKey; localStorage.setItem('isis_openai_key', openaiKey); }
-  if (groqKey)   { CFG.groqKey   = groqKey;   localStorage.setItem('isis_groq_key',   groqKey);   }
-  if (gemKey)    { CFG.apiKey    = gemKey;     localStorage.setItem('isis_api_key',    gemKey);    }
+  if (claudeKey)     { CFG.claudeKey     = claudeKey;     localStorage.setItem('isis_claude_key',      claudeKey);     }
+  if (openaiKey)     { CFG.openaiKey     = openaiKey;     localStorage.setItem('isis_openai_key',      openaiKey);     }
+  if (groqKey)       { CFG.groqKey       = groqKey;       localStorage.setItem('isis_groq_key',        groqKey);       }
+  if (gemKey)        { CFG.apiKey        = gemKey;        localStorage.setItem('isis_api_key',         gemKey);        }
+  if (openrouterKey) { CFG.openrouterKey = openrouterKey; localStorage.setItem('isis_openrouter_key',  openrouterKey); }
+  if (mistralKey)    { CFG.mistralKey    = mistralKey;    localStorage.setItem('isis_mistral_key',     mistralKey);    }
+  if (cerebrasKey)   { CFG.cerebrasKey   = cerebrasKey;   localStorage.setItem('isis_cerebras_key',    cerebrasKey);   }
 
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
@@ -954,6 +966,39 @@ async function testKey(provider) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
       result.className = 'test-result ok'; result.textContent = '✓ Clé Groq valide.';
+    } else if (provider === 'openrouter') {
+      const key = document.getElementById('settingsOpenrouterKey').value.trim();
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenRouter (openrouter.ai/keys).'; return; }
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`,'HTTP-Referer':window.location.href,'X-Title':'ISIS'},
+        body: JSON.stringify({model:'meta-llama/llama-3.3-70b-instruct:free',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+      result.className = 'test-result ok'; result.textContent = '✓ OpenRouter valide — Llama 3.3 70B gratuit activé.';
+    } else if (provider === 'mistral') {
+      const key = document.getElementById('settingsMistralKey').value.trim();
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Mistral (console.mistral.ai).'; return; }
+      const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+        body: JSON.stringify({model:'mistral-small-latest',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+      result.className = 'test-result ok'; result.textContent = '✓ Mistral AI valide.';
+    } else if (provider === 'cerebras') {
+      const key = document.getElementById('settingsCerebrasKey').value.trim();
+      if (!key) { result.className='test-result err'; result.textContent='Entre une clé Cerebras (cloud.cerebras.ai).'; return; }
+      const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+        body: JSON.stringify({model:'llama-3.3-70b',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+      result.className = 'test-result ok'; result.textContent = '✓ Cerebras valide — Llama ultra-rapide activé.';
     } else {
       const key = document.getElementById('settingsApiKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Gemini.'; return; }
@@ -1129,6 +1174,59 @@ async function callClaude() {
   return data.content?.[0]?.text || 'Pas de réponse.';
 }
 
+// ── OpenRouter (gratuit — Llama, Mistral, Gemma…) ──
+async function callOpenRouter() {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method : 'POST',
+    headers: {
+      'Content-Type' : 'application/json',
+      'Authorization': `Bearer ${CFG.openrouterKey}`,
+      'HTTP-Referer' : window.location.href,
+      'X-Title'      : 'ISIS Personal Assistant',
+    },
+    body: JSON.stringify({
+      model   : 'meta-llama/llama-3.3-70b-instruct:free',
+      max_tokens: 600,
+      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `OpenRouter HTTP ${res.status}`);
+  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+}
+
+// ── Mistral AI (entreprise française, crédits gratuits) ──
+async function callMistral() {
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.mistralKey}` },
+    body: JSON.stringify({
+      model   : 'mistral-small-latest',
+      max_tokens: 600,
+      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Mistral HTTP ${res.status}`);
+  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+}
+
+// ── Cerebras (Llama ultra-rapide, gratuit) ──
+async function callCerebras() {
+  const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.cerebrasKey}` },
+    body: JSON.stringify({
+      model   : 'llama-3.3-70b',
+      max_tokens: 600,
+      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || `Cerebras HTTP ${res.status}`);
+  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+}
+
 // ── OpenAI ──
 async function callOpenAI() {
   for (const model of ['gpt-4o-mini', 'gpt-3.5-turbo']) {
@@ -1153,7 +1251,7 @@ async function callOpenAI() {
   throw new Error('OpenAI indisponible.');
 }
 
-// Routeur : Claude → Groq → OpenAI → Gemini
+// Routeur : Claude → Groq → OpenRouter → Cerebras → Mistral → OpenAI → Gemini
 async function callAI() {
   const tried = [];
 
@@ -1165,6 +1263,18 @@ async function callAI() {
     try { return await callGroq(); }
     catch(e) { tried.push(`Groq: ${e.message}`); console.warn('Groq:', e.message); }
   }
+  if (CFG.openrouterKey) {
+    try { return await callOpenRouter(); }
+    catch(e) { tried.push(`OpenRouter: ${e.message}`); console.warn('OpenRouter:', e.message); }
+  }
+  if (CFG.cerebrasKey) {
+    try { return await callCerebras(); }
+    catch(e) { tried.push(`Cerebras: ${e.message}`); console.warn('Cerebras:', e.message); }
+  }
+  if (CFG.mistralKey) {
+    try { return await callMistral(); }
+    catch(e) { tried.push(`Mistral: ${e.message}`); console.warn('Mistral:', e.message); }
+  }
   if (CFG.openaiKey) {
     try { return await callOpenAI(); }
     catch(e) { tried.push(`OpenAI: ${e.message}`); console.warn('OpenAI:', e.message); }
@@ -1175,7 +1285,7 @@ async function callAI() {
   }
 
   if (tried.length === 0) {
-    throw new Error('Aucune clé API configurée. Ouvre ⚙ Paramètres et entre ta clé Groq (gratuit) ou Claude.');
+    throw new Error('Aucune clé API configurée. Ouvre ⚙ Paramètres et entre ta clé OpenRouter (gratuit sur openrouter.ai) ou Groq (console.groq.com).');
   }
   throw new Error(`Toutes les IA ont échoué :\n${tried.join('\n')}\n\nVérifie tes clés dans ⚙ Paramètres.`);
 }
@@ -1825,8 +1935,54 @@ Demande : "${userText}"`
   const wantsNotionUpdate = /(?:modifie|mets?\s+à\s+jour|complète|ajoute\s+à|actualise|mets?\s+dans)\s+(?:la\s+)?page\s+notion\b|(?:modifie|complète|mets?\s+à\s+jour)\s+(?:ma\s+)?notion\b|ajoute\s+(?:ça|ceci|ce\s+\w+|cela)\s+(?:à\s+la\s+|dans\s+(?:la\s+)?)?page\s+notion|mets?\s+à\s+jour\s+(?:la\s+page\s+)?notion/i.test(ut);
 
   // ── Google Drive ──
-  const wantsDrive = /drive|(?:cherche|trouve|montre|affiche|liste|ouvre|accède\s+à|regarde|montre.?moi)\s+(?:mes\s+)?(?:fichier|doc(?!teur)|document|google\s*doc|rapport|spreadsheet|tableur|présentation|slide)|(?:mes\s+)?(?:fichier|doc(?!teur)|document)\s+(?:sur\s+)?(?:drive|google)|(?:récent|dernier)\s+(?:fichier|doc(?!teur)|document)|quels?\s+(?:fichier|doc(?!teur)|document)|(?:fichier|doc(?!teur))\s+(?:qui\s+)?s'appelle/i.test(userText) && !wantsNotionCreate && !wantsNotionRead;
-  const wantsDriveSearch = /(?:cherche|trouve|retrouve)\s+(?:le\s+)?(?:fichier|doc(?!teur)|document)\s+|find.?doc|(?:cherche|trouve)\s+\w+\s+(?:dans|sur)\s+(?:drive|google\s*drive)/i.test(userText);
+  const wantsReadDoc = /(?:lis|lire|ouvre|ouvrir|résume|résumé|analyse|analyser|que\s+(?:dit|contient|raconte))\s+(?:le\s+|mon\s+|ce\s+|la\s+)?(?:document|doc(?!teur)|fichier|google\s*doc|rapport|note)\s+(.+)|(?:lis|résume|analyse)\s+(?:le\s+doc\s+|ce\s+doc\s+)?["«']?(.+?)["»']?\s*(?:sur\s+(?:drive|google))?$/i.test(userText) && !wantsNotionRead && !wantsNotionCreate;
+  const wantsDrive = /drive|(?:cherche|trouve|montre|affiche|liste|ouvre|accède\s+à|regarde|montre.?moi)\s+(?:mes\s+)?(?:fichier|doc(?!teur)|document|google\s*doc|rapport|spreadsheet|tableur|présentation|slide)|(?:mes\s+)?(?:fichier|doc(?!teur)|document)\s+(?:sur\s+)?(?:drive|google)|(?:récent|dernier)\s+(?:fichier|doc(?!teur)|document)|quels?\s+(?:fichier|doc(?!teur)|document)|(?:fichier|doc(?!teur))\s+(?:qui\s+)?s'appelle/i.test(userText) && !wantsNotionCreate && !wantsNotionRead && !wantsReadDoc;
+  const wantsDriveSearch = /(?:cherche|trouve|retrouve)\s+(?:le\s+)?(?:fichier|doc(?!teur)|document)\s+|find.?doc|(?:cherche|trouve)\s+\w+\s+(?:dans|sur)\s+(?:drive|google\s*drive)/i.test(userText) && !wantsReadDoc;
+
+  // ── Lire le contenu d'un Google Doc ──
+  if (wantsReadDoc && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Lecture du document...'); setHolo('thinking');
+    try {
+      // Extrait le nom du document depuis la phrase
+      const nomMatch = userText.match(/(?:lis|lire|ouvre|résume|analyse|que\s+(?:dit|contient|raconte))\s+(?:le\s+|mon\s+|ce\s+|la\s+)?(?:document|doc(?!teur)|fichier|rapport|note)?\s+(.+)/i);
+      const nomDoc = (nomMatch?.[1] || userText.replace(/lis|résume|analyse|ouvre|document|doc|fichier/gi,'').trim()).substring(0,60);
+
+      // 1. Cherche le fichier par nom
+      const searchRes = await fetchGoogleData('drive-search', { query: nomDoc });
+      if (!searchRes.files?.length) {
+        removeThinking(thinkId);
+        const m = `Aucun document trouvé pour "${nomDoc}" dans ton Drive.`;
+        addMessage('isis', m); speak(m);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+
+      // Prend le premier Google Doc trouvé (priorité sur les .doc vs autres types)
+      const docFile = searchRes.files.find(f => f.type === 'Google Doc') || searchRes.files[0];
+
+      // 2. Lit le contenu
+      const docRes = await fetchGoogleData('drive-read', { id: docFile.id });
+      removeThinking(thinkId);
+
+      if (docRes.error) {
+        const m = `Impossible de lire "${docFile.nom}" : ${docRes.error}`;
+        addMessage('isis', m); speak(m);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+
+      // 3. Affiche la carte du doc et passe le contenu à l'IA
+      addCard(renderDocCard({ titre: docRes.titre, contenu: docRes.contenu.substring(0,200)+'…' }, docFile.url));
+      const contenuTronque = docRes.contenu.substring(0, 2500);
+      contextBlock += `\n\n--- CONTENU DU DOCUMENT "${docRes.titre}" ---\n${contenuTronque}\n--- FIN DU DOCUMENT ---\n\nL'utilisateur veut que tu lises/résumes/analyses ce document. Réponds directement à sa demande en t'appuyant sur ce contenu.`;
+
+    } catch(err) {
+      removeThinking(thinkId);
+      contextBlock += `\n\n(Lecture doc impossible : ${err.message})`;
+    }
+  }
+
   if ((wantsDrive || wantsDriveSearch) && CFG.scriptUrl) {
     setStatus('thinking', 'Consultation Drive...'); setHolo('thinking');
     try {
@@ -1835,10 +1991,8 @@ Demande : "${userText}"`
       const params = driveQuery.length > 2 ? { query: driveQuery } : {};
       const result = await fetchGoogleData(action, params);
       if (result.files?.length > 0) {
-        // Affichage direct avec cartes cliquables
         addCard(renderFilesCard(result.files, driveQuery.length > 2 ? driveQuery : ''));
         contextBlock += `\n\n(Drive : ${result.files.length} fichier(s) affiché(s) avec liens cliquables dans l'interface. Noms : ${result.files.map(f=>f.nom).join(', ')})`;
-        // Si demande simple "montre mes fichiers", on peut retourner directement
         if (/^(?:montre|affiche|liste|voir)\s+(?:mes\s+)?(?:fichier|doc|document|drive)/i.test(userText.trim())) {
           const r = `${result.files.length} fichier(s) dans ton Drive.`;
           speak(r); addMessage('isis', r);
