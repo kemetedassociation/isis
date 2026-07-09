@@ -969,32 +969,33 @@ async function testKey(provider) {
     } else if (provider === 'openrouter') {
       const key = document.getElementById('settingsOpenrouterKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenRouter (openrouter.ai/keys).'; return; }
+      // Petit modèle pour le test : plus fiable et rapide
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`,'HTTP-Referer':window.location.href,'X-Title':'ISIS'},
-        body: JSON.stringify({model:'meta-llama/llama-3.3-70b-instruct:free',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+        body: JSON.stringify({model:'mistralai/mistral-7b-instruct:free',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ OpenRouter valide — Llama 3.3 70B gratuit activé.';
+      result.className = 'test-result ok'; result.textContent = '✓ OpenRouter valide — modèles gratuits activés (Llama, Mistral…).';
     } else if (provider === 'mistral') {
       const key = document.getElementById('settingsMistralKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Mistral (console.mistral.ai).'; return; }
       const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'mistral-small-latest',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+        body: JSON.stringify({model:'open-mistral-nemo',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ Mistral AI valide.';
+      result.className = 'test-result ok'; result.textContent = '✓ Mistral AI valide (open-mistral-nemo gratuit).';
     } else if (provider === 'cerebras') {
       const key = document.getElementById('settingsCerebrasKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Cerebras (cloud.cerebras.ai).'; return; }
       const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'llama-3.3-70b',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+        body: JSON.stringify({model:'llama3.1-8b',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
@@ -1176,32 +1177,44 @@ async function callClaude() {
 
 // ── OpenRouter (gratuit — Llama, Mistral, Gemma…) ──
 async function callOpenRouter() {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method : 'POST',
-    headers: {
-      'Content-Type' : 'application/json',
-      'Authorization': `Bearer ${CFG.openrouterKey}`,
-      'HTTP-Referer' : window.location.href,
-      'X-Title'      : 'ISIS Personal Assistant',
-    },
-    body: JSON.stringify({
-      model   : 'meta-llama/llama-3.3-70b-instruct:free',
-      max_tokens: 600,
-      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `OpenRouter HTTP ${res.status}`);
-  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+  // Fallback automatique si un modèle est surchargé
+  const models = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'meta-llama/llama-3.1-8b-instruct:free',
+    'mistralai/mistral-7b-instruct:free',
+  ];
+  let lastErr;
+  for (const model of models) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method : 'POST',
+        headers: {
+          'Content-Type' : 'application/json',
+          'Authorization': `Bearer ${CFG.openrouterKey}`,
+          'HTTP-Referer' : window.location.href,
+          'X-Title'      : 'ISIS Personal Assistant',
+        },
+        body: JSON.stringify({ model, max_tokens: 600, messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        lastErr = new Error(data.error?.message || `OpenRouter HTTP ${res.status}`);
+        if (/provider|unavailable|529|overloaded/i.test(lastErr.message)) continue;
+        throw lastErr;
+      }
+      return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error('OpenRouter indisponible.');
 }
 
-// ── Mistral AI (entreprise française, crédits gratuits) ──
+// ── Mistral AI (open-mistral-nemo = modèle gratuit) ──
 async function callMistral() {
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method : 'POST',
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.mistralKey}` },
     body: JSON.stringify({
-      model   : 'mistral-small-latest',
+      model   : 'open-mistral-nemo',
       max_tokens: 600,
       messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
     }),
@@ -1217,7 +1230,7 @@ async function callCerebras() {
     method : 'POST',
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.cerebrasKey}` },
     body: JSON.stringify({
-      model   : 'llama-3.3-70b',
+      model   : 'llama3.3-70b',
       max_tokens: 600,
       messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
     }),
