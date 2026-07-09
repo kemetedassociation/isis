@@ -921,7 +921,12 @@ async function testKey(provider) {
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Claude (console.anthropic.com).'; return; }
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':key,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true',
+        },
         body: JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
@@ -930,14 +935,14 @@ async function testKey(provider) {
     } else if (provider === 'openai') {
       const key = document.getElementById('settingsOpenaiKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenAI.'; return; }
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'gpt-4o-mini',messages:[{role:'user',content:'OK'}],max_tokens:5}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className='test-result ok'; result.textContent='✓ Clé OpenAI valide.';
+      // OpenAI bloque les appels directs depuis le navigateur (CORS) — on vérifie le format de la clé
+      if (!key.startsWith('sk-')) {
+        result.className='test-result err'; result.textContent='✗ Format invalide — la clé OpenAI commence par sk-'; return;
+      }
+      // OpenAI n'autorise pas les appels browser-side, on la sauvegarde et on informe
+      document.getElementById('settingsOpenaiKey').dataset.saved = key;
+      result.className='test-result ok';
+      result.textContent='✓ Clé OpenAI enregistrée. Note : OpenAI bloque les tests navigateur mais fonctionnera via ISIS.';
     } else if (provider === 'groq') {
       const key = document.getElementById('settingsGroqKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Groq (console.groq.com).'; return; }
@@ -1106,7 +1111,12 @@ async function callGroq() {
 async function callClaude() {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method : 'POST',
-    headers: { 'Content-Type':'application/json', 'x-api-key':CFG.claudeKey, 'anthropic-version':'2023-06-01' },
+    headers: {
+      'Content-Type'                          : 'application/json',
+      'x-api-key'                             : CFG.claudeKey,
+      'anthropic-version'                     : '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
     body: JSON.stringify({
       model    : 'claude-haiku-4-5-20251001',
       max_tokens: 600,
@@ -1143,22 +1153,31 @@ async function callOpenAI() {
   throw new Error('OpenAI indisponible.');
 }
 
-// Routeur : Claude → OpenAI → Groq → Gemini
+// Routeur : Claude → Groq → OpenAI → Gemini
 async function callAI() {
+  const tried = [];
+
   if (CFG.claudeKey) {
     try { return await callClaude(); }
-    catch(e) { console.warn('Claude:', e.message); }
-  }
-  if (CFG.openaiKey) {
-    try { return await callOpenAI(); }
-    catch(e) { console.warn('OpenAI:', e.message); }
+    catch(e) { tried.push(`Claude: ${e.message}`); console.warn('Claude:', e.message); }
   }
   if (CFG.groqKey) {
     try { return await callGroq(); }
-    catch(e) { console.warn('Groq:', e.message); }
+    catch(e) { tried.push(`Groq: ${e.message}`); console.warn('Groq:', e.message); }
   }
-  if (CFG.apiKey) return await callGemini();
-  throw new Error('Aucune clé API configurée. Clique sur ⚙.');
+  if (CFG.openaiKey) {
+    try { return await callOpenAI(); }
+    catch(e) { tried.push(`OpenAI: ${e.message}`); console.warn('OpenAI:', e.message); }
+  }
+  if (CFG.apiKey) {
+    try { return await callGemini(); }
+    catch(e) { tried.push(`Gemini: ${e.message}`); console.warn('Gemini:', e.message); }
+  }
+
+  if (tried.length === 0) {
+    throw new Error('Aucune clé API configurée. Ouvre ⚙ Paramètres et entre ta clé Groq (gratuit) ou Claude.');
+  }
+  throw new Error(`Toutes les IA ont échoué :\n${tried.join('\n')}\n\nVérifie tes clés dans ⚙ Paramètres.`);
 }
 
 // ================================================================
@@ -1966,9 +1985,19 @@ Demande : "${userText}"`
     history.pop();
     removeThinking(thinkId);
 
-    let msg = `Erreur : ${e.message}`;
-    if (/fetch|network|Failed to fetch/i.test(e.message))
+    let msg;
+    if (/fetch|network|Failed to fetch/i.test(e.message)) {
       msg = 'Impossible de joindre l\'API. Vérifie ta connexion Internet.';
+    } else if (/Toutes les IA ont échoué/i.test(e.message)) {
+      // Reformate le message multi-ligne pour le chat
+      const lines = e.message.split('\n').filter(Boolean);
+      const detail = lines.slice(1, -1).join(' · ');
+      msg = `Aucune IA disponible. ${detail ? '(' + detail + ')' : ''} Ouvre ⚙ Paramètres et vérifie tes clés Claude, Groq ou OpenAI.`;
+    } else if (/Aucune clé API/i.test(e.message)) {
+      msg = 'Aucune clé IA configurée. Ouvre ⚙ Paramètres et entre ta clé Groq (gratuit sur console.groq.com) ou Claude.';
+    } else {
+      msg = `Erreur : ${e.message}`;
+    }
 
     addMessage('isis', msg); speak(msg);
     setStatus('idle', 'En attente'); setHolo('idle');
