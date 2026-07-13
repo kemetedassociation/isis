@@ -13,6 +13,8 @@ const CFG = {
   openrouterKey  : localStorage.getItem('isis_openrouter_key')   || '',
   mistralKey     : localStorage.getItem('isis_mistral_key')      || '',
   cerebrasKey    : localStorage.getItem('isis_cerebras_key')     || '',
+  elevenLabsKey  : localStorage.getItem('isis_elevenlabs_key')   || '',
+  elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || '21m00Tcm4TlvDq8ikWAM',
   scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
@@ -228,6 +230,8 @@ let history       = [];
 let memory        = JSON.parse(localStorage.getItem('isis_memory') || '{}');
 let isListening   = false;
 let isSpeaking    = false;
+let speakQueue    = [];      // file d'attente vocale
+let currentAudio  = null;    // élément Audio ElevenLabs en cours
 let recognition   = null;
 let audioStream   = null;
 let holoViz       = null;
@@ -568,6 +572,8 @@ function showApp() {
     if (s('settingsOpenrouterKey'))  s('settingsOpenrouterKey').value  = CFG.openrouterKey  || '';
     if (s('settingsMistralKey'))     s('settingsMistralKey').value     = CFG.mistralKey     || '';
     if (s('settingsCerebrasKey'))    s('settingsCerebrasKey').value    = CFG.cerebrasKey    || '';
+    if (s('settingsElevenLabsKey'))  s('settingsElevenLabsKey').value  = CFG.elevenLabsKey  || '';
+    if (s('settingsElevenVoice'))    s('settingsElevenVoice').value    = CFG.elevenVoiceId  || '';
     if (s('settingsScriptUrl')) s('settingsScriptUrl').value = CFG.scriptUrl  || '';
     if (s('settingsGoals'))     s('settingsGoals').value     = memory.objectifs || '';
     if (s('settingsInterests')) s('settingsInterests').value = memory.interets  || '';
@@ -876,6 +882,10 @@ function saveSettingsPanel() {
   if (openrouterKey) { CFG.openrouterKey = openrouterKey; localStorage.setItem('isis_openrouter_key',  openrouterKey); }
   if (mistralKey)    { CFG.mistralKey    = mistralKey;    localStorage.setItem('isis_mistral_key',     mistralKey);    }
   if (cerebrasKey)   { CFG.cerebrasKey   = cerebrasKey;   localStorage.setItem('isis_cerebras_key',    cerebrasKey);   }
+  const elevenKey   = document.getElementById('settingsElevenLabsKey')?.value.trim() || '';
+  const elevenVoice = document.getElementById('settingsElevenVoice')?.value.trim()   || '';
+  if (elevenKey)   { CFG.elevenLabsKey = elevenKey;   localStorage.setItem('isis_elevenlabs_key',   elevenKey);   }
+  if (elevenVoice) { CFG.elevenVoiceId = elevenVoice; localStorage.setItem('isis_elevenlabs_voice', elevenVoice); }
 
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
@@ -891,6 +901,70 @@ function saveSettingsPanel() {
   localStorage.removeItem('isis_working_api');
   toggleSettings();
   addMessage('isis', 'Paramètres mis à jour.');
+}
+
+async function testElevenLabs() {
+  const box = document.getElementById('elevenResult');
+  box.style.display = 'block';
+  box.className = 'test-result';
+  box.textContent = 'Test ElevenLabs...';
+  const key     = document.getElementById('settingsElevenLabsKey').value.trim();
+  const voiceId = document.getElementById('settingsElevenVoice').value.trim() || '21m00Tcm4TlvDq8ikWAM';
+  if (!key) { box.className='test-result err'; box.textContent='Entre une clé ElevenLabs (elevenlabs.io).'; return; }
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+      method : 'POST',
+      headers: { 'Accept':'audio/mpeg', 'Content-Type':'application/json', 'xi-api-key': key },
+      body   : JSON.stringify({
+        text: 'Bonjour Mass, ISIS en ligne.',
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability:0.45, similarity_boost:0.80, style:0.25, use_speaker_boost:true },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail?.message || `HTTP ${res.status}`);
+    }
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play();
+    // Sauvegarder
+    CFG.elevenLabsKey = key;
+    CFG.elevenVoiceId = voiceId;
+    localStorage.setItem('isis_elevenlabs_key',   key);
+    localStorage.setItem('isis_elevenlabs_voice', voiceId);
+    box.className='test-result ok'; box.textContent='✓ ElevenLabs actif — voix naturelle activée pour ISIS.';
+  } catch(e) {
+    box.className='test-result err'; box.textContent=`✗ ${e.message}`;
+  }
+}
+
+async function previewElevenVoice() {
+  const box     = document.getElementById('elevenResult');
+  const key     = document.getElementById('settingsElevenLabsKey').value.trim() || CFG.elevenLabsKey;
+  const voiceId = document.getElementById('settingsElevenVoice').value.trim()   || CFG.elevenVoiceId;
+  if (!key) { box.className='test-result err'; box.style.display='block'; box.textContent='Entre d\'abord une clé ElevenLabs.'; return; }
+  box.className='test-result'; box.style.display='block'; box.textContent='Aperçu voix...';
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+      method:'POST',
+      headers:{'Accept':'audio/mpeg','Content-Type':'application/json','xi-api-key':key},
+      body: JSON.stringify({ text:'Bonjour, je suis ISIS, votre assistant personnel.', model_id:'eleven_multilingual_v2', voice_settings:{stability:0.5,similarity_boost:0.8} }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = new Audio(url);
+    a.onended  = () => URL.revokeObjectURL(url);
+    a.play();
+    box.className='test-result ok'; box.textContent='▶ Aperçu en cours...';
+  } catch(e) {
+    box.className='test-result err'; box.textContent=`✗ ${e.message}`;
+  }
 }
 
 async function testGmail() {
@@ -2383,7 +2457,7 @@ function stopConversation() {
 }
 
 function toggleListening() {
-  if (isSpeaking) { window.speechSynthesis.cancel(); isSpeaking=false; setHolo('idle'); }
+  if (isSpeaking) { stopSpeaking(); return; } // couper ISIS si elle parle
   if (convMode) { stopConversation(); return; }
   isListening ? stopListening() : startListening();
 }
@@ -2450,15 +2524,87 @@ function toggleConvMode() {
 }
 
 // ================================================================
-//  SYNTHÈSE VOCALE — optimisée iOS + Android
+//  SYNTHÈSE VOCALE — file d'attente + ElevenLabs + fallback navigateur
 // ================================================================
+
+// Arrêt immédiat (utilisateur coupe la parole)
+function stopSpeaking() {
+  speakQueue = [];
+  if (currentAudio) { try { currentAudio.pause(); } catch(e){} currentAudio = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  isSpeaking = false;
+  setHolo('idle');
+}
+
+// Ajouter à la file — ne jamais couper la parole en cours
+function speak(text, onDone) {
+  const clean = (text || '').replace(/[*#`_~]/g, '').replace(/\n+/g, ' ').trim();
+  if (!clean) { onDone?.(); return; }
+  speakQueue.push({ text: clean, onDone });
+  if (!isSpeaking) _processQueue();
+}
+
+// Traiter la file séquentiellement
+async function _processQueue() {
+  if (!speakQueue.length) {
+    isSpeaking = false;
+    setStatus('idle', 'En attente'); setHolo('idle');
+    if (convMode) setTimeout(() => { listenPhase = 'message'; startContinuousListen(); }, 500);
+    return;
+  }
+  isSpeaking = true;
+  const { text, onDone } = speakQueue.shift();
+  setStatus('speaking', 'ISIS parle'); setHolo('speaking');
+
+  const next = () => { onDone?.(); _processQueue(); };
+
+  if (CFG.elevenLabsKey) {
+    const ok = await _speakElevenLabs(text, next);
+    if (ok) return;
+  }
+  _speakBrowser(text, next);
+}
+
+// ── ElevenLabs TTS (voix naturelle, gratuit 10k chars/mois) ──
+async function _speakElevenLabs(text, onDone) {
+  try {
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${CFG.elevenVoiceId}/stream`,
+      {
+        method : 'POST',
+        headers: { 'Accept':'audio/mpeg', 'Content-Type':'application/json', 'xi-api-key': CFG.elevenLabsKey },
+        body   : JSON.stringify({
+          text,
+          model_id : 'eleven_multilingual_v2',
+          voice_settings: { stability: 0.45, similarity_boost: 0.80, style: 0.25, use_speaker_boost: true },
+        }),
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+    if (!res.ok) throw new Error(`ElevenLabs HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    await audio.play();
+    return true;
+  } catch(e) {
+    console.warn('ElevenLabs TTS:', e.message);
+    return false;
+  }
+}
+
+// ── Navigateur TTS (fallback amélioré) ──
 function getBestVoice() {
   const all = window.speechSynthesis.getVoices();
   const priority = [
     'Microsoft Hortense Online', 'Microsoft Hortense',
     'Microsoft Julie Online',    'Microsoft Julie',
+    'Marie',                     'Amélie',
     'Google français',           'Google French',
-    'Amélie',                    'Thomas',
+    'Thomas',
   ];
   for (const name of priority) {
     const v = all.find(v => v.name.startsWith(name));
@@ -2482,79 +2628,43 @@ function playActivationSound() {
   } catch(e) {}
 }
 
-function speak(text, onDone) {
+function _speakBrowser(text, onDone) {
   if (!window.speechSynthesis) { onDone?.(); return; }
 
-  const clean = text.replace(/[*#`_]/g,'').replace(/\n+/g,' ').trim();
-  if (!clean) { onDone?.(); return; }
-
-  window.speechSynthesis.cancel();
-
-  const sentences = clean.match(/[^.!?…]+[.!?…]+(?:\s|$)|[^.!?…]+$/g)
-    ?.map(s => s.trim()).filter(s => s.length > 1) || [clean];
-
+  const sentences = text.match(/[^.!?…]+[.!?…]+(?:\s|$)|[^.!?…]+$/g)
+    ?.map(s => s.trim()).filter(s => s.length > 1) || [text];
   let idx = 0;
 
-  // FIX iOS : watchdog qui relance la synthèse vocale toutes les 10s
-  // iOS Safari la coupe arbitrairement après ~30s
+  // Watchdog iOS : Safari coupe la synth arbitrairement après ~30s
   let iosWatchdog = null;
   const startWatchdog = () => {
     if (!/iphone|ipad|ipod/i.test(navigator.userAgent)) return;
     iosWatchdog = setInterval(() => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }
+      if (window.speechSynthesis.speaking) { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
     }, 10000);
   };
-  const stopWatchdog = () => {
-    if (iosWatchdog) { clearInterval(iosWatchdog); iosWatchdog = null; }
-  };
+  const stopWatchdog = () => { if (iosWatchdog) { clearInterval(iosWatchdog); iosWatchdog = null; } };
 
   const speakNext = () => {
-    if (idx >= sentences.length) {
-      isSpeaking = false;
-      stopWatchdog();
-      setStatus('idle','En attente'); setHolo('idle');
-      // FIX : en mode conversation, écoute directement le message suivant (pas de wake word)
-      if (convMode) {
-        setTimeout(() => { listenPhase = 'message'; startContinuousListen(); }, 500);
-      }
-      onDone?.();
-      return;
-    }
-
-    // FIX : suppression du code mort (null ? null : null)
+    if (idx >= sentences.length) { stopWatchdog(); onDone(); return; }
     const voice = getBestVoice();
-
-    const utt    = new SpeechSynthesisUtterance(sentences[idx++]);
-    utt.lang     = 'fr-FR';
-    utt.rate     = 0.97;
-    utt.pitch    = 0.82;
-    utt.volume   = 1.0;
+    const utt   = new SpeechSynthesisUtterance(sentences[idx++]);
+    utt.lang    = 'fr-FR';
+    utt.rate    = 1.02;   // légèrement plus fluide
+    utt.pitch   = 1.0;    // pitch naturel
+    utt.volume  = 1.0;
     if (voice) utt.voice = voice;
-
-    utt.onend   = () => setTimeout(speakNext, 120);
+    utt.onend   = () => setTimeout(speakNext, 80);
     utt.onerror = (e) => {
-      // Ignore les erreurs d'interruption (cancel() déclenche 'interrupted')
       if (e.error === 'interrupted') return;
-      isSpeaking = false; stopWatchdog();
-      setStatus('idle','En attente'); setHolo('idle');
-      onDone?.();
+      stopWatchdog(); onDone();
     };
-
     window.speechSynthesis.speak(utt);
   };
 
-  isSpeaking = true;
-
   const go = () => { startWatchdog(); speakNext(); };
-
-  if (window.speechSynthesis.getVoices().length > 0) {
-    go();
-  } else {
-    window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; go(); };
-  }
+  if (window.speechSynthesis.getVoices().length > 0) go();
+  else window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; go(); };
 }
 
 // ================================================================

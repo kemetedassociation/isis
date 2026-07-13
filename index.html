@@ -23,7 +23,7 @@
   <meta property="og:description" content="Assistant IA personnel style JARVIS" />
   <meta property="og:image" content="./icon-512.png" />
 
-  <link rel="stylesheet" href="./style.css?v=5" />
+  <link rel="stylesheet" href="./style.css?v=6" />
 
   <!-- Service Worker — enregistrement immédiat -->
   <script>
@@ -187,6 +187,17 @@
           <input type="password" id="settingsApiKey" placeholder="AIza..." />
           <button class="test-btn" onclick="testKey('gemini')">Test</button>
         </div>
+        <label>🎙️ Clé ElevenLabs — Voix naturelle ⭐ (elevenlabs.io → gratuit 10k chars)</label>
+        <div class="input-row">
+          <input type="password" id="settingsElevenLabsKey" placeholder="sk_..." />
+          <button class="test-btn" onclick="testElevenLabs()">Test</button>
+        </div>
+        <label>Voix ElevenLabs (ID — laisser vide = Rachel par défaut)</label>
+        <div class="input-row">
+          <input type="text" id="settingsElevenVoice" placeholder="21m00Tcm4TlvDq8ikWAM" style="font-size:11px" />
+          <button class="test-btn" onclick="previewElevenVoice()">▶</button>
+        </div>
+        <div id="elevenResult" class="test-result"></div>
         <label>⭐ Clé OpenRouter — 100% Gratuit (openrouter.ai/keys)</label>
         <div class="input-row">
           <input type="password" id="settingsOpenrouterKey" placeholder="sk-or-v1-..." />
@@ -275,7 +286,7 @@
 
   </div><!-- /.app -->
 
-  <script src="./script.js?v=5"></script>
+  <script src="./script.js?v=6"></script>
   <script>
     // ── PWA iOS Banner ──
     (function() {
