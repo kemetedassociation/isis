@@ -1383,22 +1383,50 @@ async function callAIOneShot(prompt) {
 
 // Extrait et répare le JSON retourné par l'IA (gère markdown, sauts de ligne, guillemets)
 function parseAIJson(raw) {
-  // 1. Supprimer les blocs markdown ```json ... ```
-  let s = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
-  // 2. Extraire l'objet JSON
-  const m = s.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  const block = m[0];
+  // 1. Supprimer les blocs markdown ```json ... ``` et tout ce qui précède le JSON
+  let s = raw.replace(/```[\w]*\r?\n?/gi, '').replace(/```/g, '').trim();
+
+  // 2. Extraire l'objet JSON (du premier { au dernier })
+  const start = s.indexOf('{');
+  const end   = s.lastIndexOf('}');
+  if (start === -1 || end === -1) return null;
+  const block = s.slice(start, end + 1);
+
   // 3. Essai direct
   try { return JSON.parse(block); } catch(e) {}
-  // 4. Les LLM gratuits mettent souvent des \n littéraux dans les valeurs string
-  try { return JSON.parse(block.replace(/\n/g, '\\n').replace(/\r/g, '')); } catch(e) {}
-  // 5. Extraction manuelle des champs texte si JSON toujours cassé
+
+  // 4. Escape des \n UNIQUEMENT à l'intérieur des valeurs string JSON
+  //    (les \n structurels restent intacts, seuls ceux dans les "..." sont escapés)
+  try {
+    const fixed = block.replace(/"((?:[^"\\]|\\[\s\S])*)"/g, match =>
+      match.replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+    );
+    return JSON.parse(fixed); } catch(e) {}
+
+  // 5. Le contenu a peut-être des guillemets non échappés — on les échappe
+  try {
+    const fixed2 = block
+      .replace(/:\s*"([\s\S]*?)"(\s*[,}])/g, (_, val, end) =>
+        ': "' + val.replace(/\n/g, '\\n').replace(/\r/g, '').replace(/(?<!\\)"/g, '\\"') + '"' + end
+      );
+    return JSON.parse(fixed2); } catch(e) {}
+
+  // 6. Extraction manuelle titre + contenu en dernier recours
   const obj = {};
-  block.replace(/"([^"\\]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g, (_, k, v) => {
-    obj[k] = v.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-  });
-  return Object.keys(obj).length ? obj : null;
+  // Titre : court, sans saut de ligne
+  const titreM = block.match(/"titre"\s*:\s*"([^"\n]{1,200})"/);
+  if (titreM) obj.titre = titreM[1];
+  // Contenu : tout ce qui est entre la première " après "contenu": et le dernier "} du bloc
+  const contenuIdx = block.indexOf('"contenu"');
+  if (contenuIdx !== -1) {
+    const afterKey = block.slice(contenuIdx + 9).replace(/^\s*:\s*"/, '');
+    const lastQuote = afterKey.lastIndexOf('"');
+    if (lastQuote > 0) {
+      obj.contenu = afterKey.slice(0, lastQuote)
+        .replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    }
+  }
+  return (obj.titre || obj.contenu) ? obj : null;
 }
 
 async function preparerEmail(instruction) {
@@ -1437,8 +1465,8 @@ Instruction : ${instruction}`
 
 async function preparerDocument(instruction) {
   const raw = await callAIOneShot(
-    `Génère un document complet. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
-{"titre":"titre du document","contenu":"contenu complet et structuré, 300 à 500 mots"}
+    `Génère un document complet. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick, sans explication. Les sauts de ligne dans le contenu doivent être écrits \\n (backslash-n). Format exact :
+{"titre":"titre du document","contenu":"paragraphe 1\\nparagraphe 2\\nparagraphe 3"}
 Instruction: ${instruction}`
   );
   const parsed = parseAIJson(raw);
@@ -1450,11 +1478,8 @@ async function preparerBudgetPrevisionnel(instruction) {
   const annee = new Date().getFullYear();
   const raw = await callAIOneShot(
     `Tu es le directeur financier de KEMETED, association culturelle et entrepreneuriale basée à Besançon.
-Génère un budget prévisionnel complet et réaliste. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
-{
-  "titre": "Budget Prévisionnel KEMETED ${annee}",
-  "contenu": "BUDGET PRÉVISIONNEL KEMETED — ${annee}\\n\\nCHARGES PRÉVISIONNELLES\\n[liste détaillée avec montants]\\n\\nPRODUITS PRÉVISIONNELS\\n[liste détaillée avec montants]\\n\\nRÉSULTAT PRÉVISIONNEL\\nTotal charges : X€\\nTotal produits : X€\\nRésultat : X€\\n\\nHYPOTHÈSES\\n[hypothèses de base]"
-}
+Génère un budget prévisionnel complet et réaliste. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+{"titre":"Budget Prévisionnel KEMETED ${annee}","contenu":"CHARGES PRÉVISIONNELLES\\n- Poste 1 : X€\\n\\nPRODUITS PRÉVISIONNELS\\n- Produit 1 : X€\\n\\nRÉSULTAT\\nTotal charges : X€ | Total produits : X€ | Résultat : +X€"}
 Instruction spécifique : ${instruction}
 Inclure : subventions, adhésions, formations, sites web, événements, prestations, charges de fonctionnement, assurances, déplacements, communication. Chiffres réalistes pour une association en développement.`
   );
@@ -1466,12 +1491,8 @@ Inclure : subventions, adhésions, formations, sites web, événements, prestati
 async function preparerPV(instruction) {
   const date = new Date().toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const raw = await callAIOneShot(
-    `Tu rédiges un procès-verbal (PV) ou compte-rendu de réunion officiel pour KEMETED Association.
-Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
-{
-  "titre": "PV de réunion — KEMETED — [date]",
-  "contenu": "PROCÈS-VERBAL DE RÉUNION\\nAssociation KEMETED\\nDate : [date]\\nLieu : [lieu]\\nPrésents : [noms]\\nOrdre du jour :\\n1. [point]\\n2. [point]\\n\\nDÉROULEMENT\\n[contenu des échanges]\\n\\nDÉCISIONS PRISES\\n[liste des décisions]\\n\\nACTIONS À MENER\\n[liste avec responsables et échéances]\\n\\nDate du prochain rendez-vous : [date]\\n\\nLa séance est levée à [heure].\\n\\nLe Président / La Secrétaire"
-}
+    `Tu rédiges un procès-verbal officiel pour KEMETED Association. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+{"titre":"PV de réunion — KEMETED — ${date}","contenu":"PROCÈS-VERBAL\\nDate : ${date}\\nLieu : [lieu]\\nPrésents : [noms]\\n\\nORDRE DU JOUR\\n1. [point]\\n\\nDÉROULEMENT\\n[échanges]\\n\\nDÉCISIONS\\n[décisions]\\n\\nACTIONS\\n[responsables + échéances]\\n\\nLe Président"}
 Date du jour : ${date}
 Instruction : ${instruction}`
   );
@@ -1482,13 +1503,9 @@ Instruction : ${instruction}`
 
 async function preparerStatuts(instruction) {
   const raw = await callAIOneShot(
-    `Tu rédiges les statuts officiels d'une association loi 1901 pour KEMETED.
-Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
-{
-  "titre": "Statuts — Association KEMETED",
-  "contenu": "STATUTS DE L'ASSOCIATION KEMETED\\n\\nARTICLE 1 — DÉNOMINATION\\n[...]\\nARTICLE 2 — OBJET\\n[...]\\nARTICLE 3 — SIÈGE SOCIAL\\n[...]\\nARTICLE 4 — DURÉE\\n[...]\\nARTICLE 5 — MEMBRES\\n[...]\\nARTICLE 6 — COTISATIONS\\n[...]\\nARTICLE 7 — ADMINISTRATION\\n[...]\\nARTICLE 8 — ASSEMBLÉE GÉNÉRALE\\n[...]\\nARTICLE 9 — RESSOURCES\\n[...]\\nARTICLE 10 — DISSOLUTION\\n[...]"
-}
-Basé sur : association loi 1901, basée à Besançon, mission culturelle et coopération Afrique-Europe, activités formation/événements/entrepreneuriat.
+    `Tu rédiges les statuts officiels d'une association loi 1901 pour KEMETED. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+{"titre":"Statuts — Association KEMETED","contenu":"STATUTS DE L'ASSOCIATION KEMETED\\n\\nARTICLE 1 — DÉNOMINATION\\n[texte]\\n\\nARTICLE 2 — OBJET\\n[texte]\\n\\nARTICLE 3 — SIÈGE SOCIAL\\n[texte]\\n\\nARTICLE 4 — DURÉE\\n[texte]\\n\\nARTICLE 5 — MEMBRES\\n[texte]\\n\\nARTICLE 6 — COTISATIONS\\n[texte]\\n\\nARTICLE 7 — ADMINISTRATION\\n[texte]\\n\\nARTICLE 8 — ASSEMBLÉE GÉNÉRALE\\n[texte]\\n\\nARTICLE 9 — RESSOURCES\\n[texte]\\n\\nARTICLE 10 — DISSOLUTION\\n[texte]"}
+Basé sur : association loi 1901, Besançon, mission culturelle et coopération Afrique-Europe.
 Instruction complémentaire : ${instruction}`
   );
   const parsed = parseAIJson(raw);
