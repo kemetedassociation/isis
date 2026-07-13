@@ -233,7 +233,8 @@ let audioStream   = null;
 let holoViz       = null;
 let convMode      = false;
 let listenPhase   = 'idle';
-let pendingAction = null;
+let pendingAction   = null;
+let lastCreatedDoc  = null; // { titre, url, id } — mémorise le dernier doc créé
 
 // ================================================================
 //  ANIMATION HOLOGRAPHIQUE
@@ -1347,7 +1348,9 @@ async function executePendingAction() {
         titre: data.titre, contenu: (data.contenu || '').substring(0, 2000),
       });
       if (result.success) {
-        reply = `Document "${data.titre}" créé. ✓`;
+        // Mémoriser le doc pour pouvoir le modifier ensuite depuis la conversation
+        lastCreatedDoc = { titre: data.titre, url: result.url, id: result.id || null };
+        reply = `Document "${data.titre}" créé. ✓ Tu peux me dire "modifie ce document" ou "ajoute..." pour le mettre à jour.`;
         removeThinking(thinkId);
         addMessage('isis', reply);
         addCard(renderDocCard(data, result.url));
@@ -1465,9 +1468,10 @@ Instruction : ${instruction}`
 
 async function preparerDocument(instruction) {
   const raw = await callAIOneShot(
-    `Génère un document complet. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick, sans explication. Les sauts de ligne dans le contenu doivent être écrits \\n (backslash-n). Format exact :
-{"titre":"titre du document","contenu":"paragraphe 1\\nparagraphe 2\\nparagraphe 3"}
-Instruction: ${instruction}`
+    `Tu es ISIS, rédacteur expert. Ton rôle : ÉCRIRE LE TEXTE du document demandé. Tu n'as pas à accéder à Google Drive ou à créer quoi que ce soit — tu fournis juste le contenu textuel que le système enverra ensuite automatiquement à Drive.
+RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick, sans commentaire, sans explication. Utilise \\n pour les sauts de ligne dans le contenu.
+Format exact : {"titre":"titre court","contenu":"paragraphe 1\\n\\nparagraphe 2\\n\\nparagraphe 3"}
+Rédige maintenant : ${instruction}`
   );
   const parsed = parseAIJson(raw);
   if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
@@ -1477,8 +1481,8 @@ Instruction: ${instruction}`
 async function preparerBudgetPrevisionnel(instruction) {
   const annee = new Date().getFullYear();
   const raw = await callAIOneShot(
-    `Tu es le directeur financier de KEMETED, association culturelle et entrepreneuriale basée à Besançon.
-Génère un budget prévisionnel complet et réaliste. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+    `Tu es ISIS, expert financier. Ton rôle : ÉCRIRE LE TEXTE d'un budget prévisionnel — tu fournis juste le contenu, le système l'envoie à Drive automatiquement. Tu n'as pas besoin d'accéder à Google.
+RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
 {"titre":"Budget Prévisionnel KEMETED ${annee}","contenu":"CHARGES PRÉVISIONNELLES\\n- Poste 1 : X€\\n\\nPRODUITS PRÉVISIONNELS\\n- Produit 1 : X€\\n\\nRÉSULTAT\\nTotal charges : X€ | Total produits : X€ | Résultat : +X€"}
 Instruction spécifique : ${instruction}
 Inclure : subventions, adhésions, formations, sites web, événements, prestations, charges de fonctionnement, assurances, déplacements, communication. Chiffres réalistes pour une association en développement.`
@@ -1491,7 +1495,8 @@ Inclure : subventions, adhésions, formations, sites web, événements, prestati
 async function preparerPV(instruction) {
   const date = new Date().toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const raw = await callAIOneShot(
-    `Tu rédiges un procès-verbal officiel pour KEMETED Association. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+    `Tu es ISIS, secrétaire officiel de KEMETED. Ton rôle : ÉCRIRE LE TEXTE d'un procès-verbal — le système l'envoie à Google Drive automatiquement, tu n'as pas à le faire.
+RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
 {"titre":"PV de réunion — KEMETED — ${date}","contenu":"PROCÈS-VERBAL\\nDate : ${date}\\nLieu : [lieu]\\nPrésents : [noms]\\n\\nORDRE DU JOUR\\n1. [point]\\n\\nDÉROULEMENT\\n[échanges]\\n\\nDÉCISIONS\\n[décisions]\\n\\nACTIONS\\n[responsables + échéances]\\n\\nLe Président"}
 Date du jour : ${date}
 Instruction : ${instruction}`
@@ -1503,7 +1508,8 @@ Instruction : ${instruction}`
 
 async function preparerStatuts(instruction) {
   const raw = await callAIOneShot(
-    `Tu rédiges les statuts officiels d'une association loi 1901 pour KEMETED. RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
+    `Tu es ISIS, juriste expert en droit associatif français. Ton rôle : ÉCRIRE LE TEXTE des statuts — le système l'envoie à Google Drive automatiquement, tu n'as pas besoin d'accéder à Google.
+RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick. Les sauts de ligne = \\n. Format exact :
 {"titre":"Statuts — Association KEMETED","contenu":"STATUTS DE L'ASSOCIATION KEMETED\\n\\nARTICLE 1 — DÉNOMINATION\\n[texte]\\n\\nARTICLE 2 — OBJET\\n[texte]\\n\\nARTICLE 3 — SIÈGE SOCIAL\\n[texte]\\n\\nARTICLE 4 — DURÉE\\n[texte]\\n\\nARTICLE 5 — MEMBRES\\n[texte]\\n\\nARTICLE 6 — COTISATIONS\\n[texte]\\n\\nARTICLE 7 — ADMINISTRATION\\n[texte]\\n\\nARTICLE 8 — ASSEMBLÉE GÉNÉRALE\\n[texte]\\n\\nARTICLE 9 — RESSOURCES\\n[texte]\\n\\nARTICLE 10 — DISSOLUTION\\n[texte]"}
 Basé sur : association loi 1901, Besançon, mission culturelle et coopération Afrique-Europe.
 Instruction complémentaire : ${instruction}`
@@ -1812,20 +1818,33 @@ async function sendMessage(userText) {
     const thinkId = addThinking();
     setStatus('thinking', 'Modification document...'); setHolo('thinking');
     try {
+      // Générer le contenu à insérer/remplacer via l'IA
+      const contenuIA = await callAIOneShot(
+        `Tu es ISIS, rédacteur. Génère UNIQUEMENT le texte à insérer dans le document, sans commentaire, sans explication, sans JSON — juste le texte brut.
+Contexte du document actuel : "${lastCreatedDoc?.titre || 'non précisé'}"
+Demande de l'utilisateur : ${userText}`
+      );
+
+      // Extraire le nom du doc depuis la demande (ou utiliser le dernier doc créé)
       const inst = await callAIOneShot(
-        `Extrais les informations de cette demande de modification de document. Réponds UNIQUEMENT en JSON valide.
-{"nom":"nom du document (vide si non précisé)","contenu":"texte à ajouter ou modifier","mode":"append ou replace ou rename"}
+        `Extrais le nom du document cible. Réponds UNIQUEMENT en JSON compact sur une ligne, sans markdown.
+{"nom":"nom du document ou vide si non précisé","mode":"append ou replace"}
 Demande : "${userText}"`
       );
-      const info = JSON.parse(inst.match(/\{[\s\S]+\}/)?.[0] || '{}');
+      const info = parseAIJson(inst) || {};
+      // Si pas de nom précisé, utiliser le dernier doc créé
+      const nomDoc = info.nom || lastCreatedDoc?.titre || '';
+      const mode   = info.mode || 'append';
+
       const result = await fetchGoogleData('edit-doc', {
-        nom: info.nom || '', contenu: (info.contenu || userText).substring(0, 2000), mode: info.mode || 'append'
+        nom: nomDoc, contenu: contenuIA.substring(0, 3000), mode,
       });
       removeThinking(thinkId);
       if (result.success) {
-        const reply = `Document "${result.titre}" modifié. ✓`;
+        lastCreatedDoc = { titre: result.titre, url: result.url, id: result.id || null };
+        const reply = `Document "${result.titre}" mis à jour. ✓`;
         addMessage('isis', reply);
-        addCard(renderDocCard({titre: result.titre, contenu: ''}, result.url));
+        addCard(renderDocCard({ titre: result.titre, contenu: '' }, result.url));
         speak(reply);
         history.push({ role:'model', parts:[{text:reply}] });
       } else {
