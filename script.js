@@ -973,11 +973,11 @@ async function testKey(provider) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`,'HTTP-Referer':window.location.href,'X-Title':'ISIS'},
-        body: JSON.stringify({model:'mistralai/mistral-7b-instruct:free',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+        body: JSON.stringify({model:'meta-llama/llama-3.2-3b-instruct:free',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ OpenRouter valide — modèles gratuits activés (Llama, Mistral…).';
+      result.className = 'test-result ok'; result.textContent = '✓ OpenRouter valide — Llama, Gemma et autres modèles gratuits activés.';
     } else if (provider === 'mistral') {
       const key = document.getElementById('settingsMistralKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Mistral (console.mistral.ai).'; return; }
@@ -1180,8 +1180,9 @@ async function callOpenRouter() {
   // Fallback automatique si un modèle est surchargé
   const models = [
     'meta-llama/llama-3.3-70b-instruct:free',
-    'meta-llama/llama-3.1-8b-instruct:free',
-    'mistralai/mistral-7b-instruct:free',
+    'nousresearch/hermes-3-llama-3.1-405b:free',
+    'openai/gpt-oss-20b:free',
+    'meta-llama/llama-3.2-3b-instruct:free',
   ];
   let lastErr;
   for (const model of models) {
@@ -1380,6 +1381,26 @@ async function callAIOneShot(prompt) {
   finally { history = saved; }
 }
 
+// Extrait et répare le JSON retourné par l'IA (gère markdown, sauts de ligne, guillemets)
+function parseAIJson(raw) {
+  // 1. Supprimer les blocs markdown ```json ... ```
+  let s = raw.replace(/```[\w]*\n?/g, '').replace(/```/g, '').trim();
+  // 2. Extraire l'objet JSON
+  const m = s.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  const block = m[0];
+  // 3. Essai direct
+  try { return JSON.parse(block); } catch(e) {}
+  // 4. Les LLM gratuits mettent souvent des \n littéraux dans les valeurs string
+  try { return JSON.parse(block.replace(/\n/g, '\\n').replace(/\r/g, '')); } catch(e) {}
+  // 5. Extraction manuelle des champs texte si JSON toujours cassé
+  const obj = {};
+  block.replace(/"([^"\\]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g, (_, k, v) => {
+    obj[k] = v.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  });
+  return Object.keys(obj).length ? obj : null;
+}
+
 async function preparerEmail(instruction) {
   const today = new Date().toLocaleDateString('fr-FR');
   const raw = await callAIOneShot(
@@ -1388,9 +1409,9 @@ async function preparerEmail(instruction) {
 Date: ${today}
 Instruction: ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerEvenement(instruction) {
@@ -1409,9 +1430,9 @@ RÈGLES :
 Date aujourd'hui : ${now.toLocaleDateString('fr-FR')} (${today})
 Instruction : ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerDocument(instruction) {
@@ -1420,9 +1441,9 @@ async function preparerDocument(instruction) {
 {"titre":"titre du document","contenu":"contenu complet et structuré, 300 à 500 mots"}
 Instruction: ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerBudgetPrevisionnel(instruction) {
@@ -1437,9 +1458,9 @@ Génère un budget prévisionnel complet et réaliste. Réponds UNIQUEMENT avec 
 Instruction spécifique : ${instruction}
 Inclure : subventions, adhésions, formations, sites web, événements, prestations, charges de fonctionnement, assurances, déplacements, communication. Chiffres réalistes pour une association en développement.`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerPV(instruction) {
@@ -1454,9 +1475,9 @@ Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
 Date du jour : ${date}
 Instruction : ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerStatuts(instruction) {
@@ -1470,9 +1491,9 @@ Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
 Basé sur : association loi 1901, basée à Besançon, mission culturelle et coopération Afrique-Europe, activités formation/événements/entrepreneuriat.
 Instruction complémentaire : ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 async function preparerSiteProspect(instruction) {
@@ -1485,9 +1506,9 @@ Génère une proposition complète de site web pour un prospect. Réponds UNIQUE
 }
 Instruction : ${instruction}`
   );
-  const m = raw.match(/\{[\s\S]+\}/);
-  if (!m) throw new Error('Format JSON incorrect');
-  return JSON.parse(m[0]);
+  const parsed = parseAIJson(raw);
+  if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
 }
 
 // ================================================================
