@@ -14,7 +14,7 @@ const CFG = {
   mistralKey     : localStorage.getItem('isis_mistral_key')      || '',
   cerebrasKey    : localStorage.getItem('isis_cerebras_key')     || '',
   elevenLabsKey  : localStorage.getItem('isis_elevenlabs_key')   || '',
-  elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || '21m00Tcm4TlvDq8ikWAM',
+  elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || 'Vt2Yqbi64ekHaabvz7ddla',
   scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
@@ -909,7 +909,7 @@ async function testElevenLabs() {
   box.className = 'test-result';
   box.textContent = 'Test ElevenLabs...';
   const key     = document.getElementById('settingsElevenLabsKey').value.trim();
-  const voiceId = document.getElementById('settingsElevenVoice').value.trim() || '21m00Tcm4TlvDq8ikWAM';
+  const voiceId = document.getElementById('settingsElevenVoice').value.trim() || 'Vt2Yqbi64ekHaabvz7ddla';
   if (!key) { box.className='test-result err'; box.textContent='Entre une clé ElevenLabs (elevenlabs.io).'; return; }
   try {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
@@ -924,7 +924,11 @@ async function testElevenLabs() {
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      throw new Error(d.detail?.message || `HTTP ${res.status}`);
+      const msg = d.detail?.message || `HTTP ${res.status}`;
+      if (/library|upgrade|subscription/i.test(msg)) {
+        throw new Error('Voix de bibliothèque (payante). Solution gratuite : crée ta propre voix sur elevenlabs.io → Voices → Add Voice → Instant Clone, puis colle le nouvel ID ici.');
+      }
+      throw new Error(msg);
     }
     const blob  = await res.blob();
     const url   = URL.createObjectURL(blob);
@@ -2558,14 +2562,43 @@ async function _processQueue() {
 
   const next = () => { onDone?.(); _processQueue(); };
 
+  // Cascade voix : ElevenLabs → OpenAI TTS → Navigateur
   if (CFG.elevenLabsKey) {
     const ok = await _speakElevenLabs(text, next);
+    if (ok) return;
+  }
+  if (CFG.openaiKey) {
+    const ok = await _speakOpenAI(text, next);
     if (ok) return;
   }
   _speakBrowser(text, next);
 }
 
-// ── ElevenLabs TTS (voix naturelle, gratuit 10k chars/mois) ──
+// ── OpenAI TTS (tts-1, voix "nova" — naturelle, utilise la clé openaiKey existante) ──
+async function _speakOpenAI(text, onDone) {
+  try {
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method : 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.openaiKey}` },
+      body   : JSON.stringify({ model:'tts-1', input: text, voice:'nova', response_format:'mp3' }),
+      signal : AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`OpenAI TTS HTTP ${res.status}`);
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    await audio.play();
+    return true;
+  } catch(e) {
+    console.warn('OpenAI TTS:', e.message);
+    return false;
+  }
+}
+
+// ── ElevenLabs TTS (tier gratuit = voix créées par l'utilisateur seulement) ──
 async function _speakElevenLabs(text, onDone) {
   try {
     const res = await fetch(
