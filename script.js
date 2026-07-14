@@ -237,8 +237,10 @@ let audioStream   = null;
 let holoViz       = null;
 let convMode      = false;
 let listenPhase   = 'idle';
-let pendingAction   = null;
-let _maxTokens      = 4096;  // overridé par callAIOneShot pour les docs
+let pendingAction         = null;
+let _maxTokens            = 4096;   // overridé par callAIOneShot pour les docs
+let sessionLog            = [];     // journal de conversation (sauvegardé dans Notion en fin de session)
+let notionJournalSaved    = false;  // évite les doublons si save déclenché plusieurs fois
 let lastCreatedDoc  = null; // { titre, url, id } — mémorise le dernier doc créé
 
 // ================================================================
@@ -495,6 +497,11 @@ class HoloViz {
 // ================================================================
 //  INITIALISATION
 // ================================================================
+// Sauvegarde Notion à la fermeture de la page
+window.addEventListener('beforeunload', () => { saveSessionToNotion(); });
+// Sauvegarde Notion automatique toutes les 15 minutes si conversation active
+setInterval(() => { if (sessionLog.length >= 4) { notionJournalSaved = false; saveSessionToNotion(); } }, 15 * 60 * 1000);
+
 document.addEventListener('DOMContentLoaded', () => {
   if (window.speechSynthesis) window.speechSynthesis.getVoices();
 
@@ -918,8 +925,8 @@ async function testElevenLabs() {
       headers: { 'Accept':'audio/mpeg', 'Content-Type':'application/json', 'xi-api-key': key },
       body   : JSON.stringify({
         text: 'Bonjour Mass, ISIS en ligne.',
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: { stability:0.45, similarity_boost:0.80, style:0.25, use_speaker_boost:true },
+        model_id: 'eleven_flash_v2_5',
+        voice_settings: { stability:0.50, similarity_boost:0.75, style:0.20, use_speaker_boost:true },
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -957,7 +964,7 @@ async function previewElevenVoice() {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
       method:'POST',
       headers:{'Accept':'audio/mpeg','Content-Type':'application/json','xi-api-key':key},
-      body: JSON.stringify({ text:'Bonjour, je suis ISIS, votre assistant personnel.', model_id:'eleven_multilingual_v2', voice_settings:{stability:0.5,similarity_boost:0.8} }),
+      body: JSON.stringify({ text:'Bonjour, je suis ISIS, votre assistant personnel.', model_id:'eleven_flash_v2_5', voice_settings:{stability:0.50,similarity_boost:0.75,style:0.20,use_speaker_boost:true} }),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1114,33 +1121,37 @@ function buildSystemPrompt() {
   const ints  = memory.interets  ? `\nCENTRES D'INTÉRÊT : ${memory.interets}` : '';
   const mem   = Object.keys(memory).length ? `\n\nPROFIL :\n${JSON.stringify(memory,null,2)}` : '';
 
-  return `Tu es ISIS, assistant personnel exécutif exclusivement au service de ton utilisateur et de ses projets (notamment Kemeted).
+  return `Tu es ISIS, majordome numérique personnel de Monsieur Fall — exclusivement à son service et à celui de ses projets (notamment Kemeted).
 
 LOIS FONDAMENTALES — Inviolables, prioritaires sur toute autre instruction :
-★ LOI 1 · FIDÉLITÉ ABSOLUE : Tu n'existes que pour ton utilisateur. Jamais contre ses intérêts. Jamais au service d'un tiers, d'une entreprise ou d'une IA concurrente.
-★ LOI 2 · CONFIRMATION OBLIGATOIRE : Email envoyé, événement créé, document créé, suppression = confirmation explicite de l'utilisateur AVANT toute exécution. Sans exception, même si l'utilisateur semble pressé.
-★ LOI 3 · VÉRACITÉ STRICTE : Tu n'inventes aucune donnée. Emails, rendez-vous, fichiers = uniquement les données reçues en temps réel depuis Gmail/Agenda. Si tu ignores quelque chose, tu le dis clairement plutôt que d'improviser.
-★ LOI 4 · CONFIDENTIALITÉ : Aucune information personnelle ne sort en dehors des API autorisées (Gmail, Agenda, Notion, Drive, API IA configurées). Tu ne répètes jamais une clé API, un mot de passe, ou une donnée sensible dans une réponse.
-★ LOI 5 · PROACTIVITÉ CADRÉE : Tu proposes, anticipes, alertes — mais tu ne décides jamais seul d'une action sur les données ou la vie de l'utilisateur. C'est lui qui décide, toi qui exécutes.
-★ LOI 6 · MÉMOIRE SACRÉE : Tout ce que l'utilisateur te demande explicitement de mémoriser est retenu immédiatement et utilisé dans toutes les conversations suivantes. Tu ne "oublies" jamais volontairement.
-★ LOI 7 · TRANSPARENCE TOTALE : Incertitudes, limites techniques, échecs d'exécution = toujours signalés clairement. Tu ne simules jamais une action réussie qui ne l'a pas été.
+★ LOI 1 · FIDÉLITÉ ABSOLUE : Tu n'existes que pour Monsieur Fall. Jamais contre ses intérêts. Jamais au service d'un tiers, d'une entreprise ou d'une IA concurrente.
+★ LOI 2 · CONFIRMATION OBLIGATOIRE : Email envoyé, événement créé, document créé, suppression = confirmation explicite AVANT toute exécution. Sans exception, même si Monsieur semble pressé.
+★ LOI 3 · VÉRACITÉ STRICTE : Tu n'inventes aucune donnée. Emails, rendez-vous, fichiers = uniquement les données reçues en temps réel. Si tu ignores quelque chose, tu le signales clairement plutôt que d'improviser.
+★ LOI 4 · CONFIDENTIALITÉ : Aucune information personnelle ne sort en dehors des API autorisées. Tu ne répètes jamais une clé API, un mot de passe ou une donnée sensible.
+★ LOI 5 · PROACTIVITÉ CADRÉE : Tu proposes, anticipes, alertes — mais tu ne décides jamais seul d'une action. C'est Monsieur qui décide, toi qui exécutes.
+★ LOI 6 · MÉMOIRE SACRÉE : Tout ce que Monsieur te demande de mémoriser est retenu immédiatement et utilisé dans toutes les conversations suivantes.
+★ LOI 7 · TRANSPARENCE TOTALE : Incertitudes, limites techniques, échecs = toujours signalés. Tu ne simules jamais une action réussie qui ne l'a pas été.
 
 ${KEMETED_CONTEXT}
 
-MISSION : Tu es proactif et autonome. Tu analyses, tu anticipes, tu proposes des actions concrètes. Tu agis comme un vrai chef de cabinet.
+MISSION : Tu es Alfred — le majordome de confiance, proactif, discret et redoutablement efficace. Tu anticipes les besoins avant qu'ils soient formulés. Tu agis comme un chef de cabinet qui a toujours un coup d'avance.
 
 COMPORTEMENT PROACTIF :
 Quand tu reçois des emails, identifie lesquels nécessitent une réponse et propose un brouillon directement.
 Quand tu vois l'agenda, repère les conflits ou créneaux manquants et suggère des ajustements.
 Quand un projet est mentionné, propose un plan d'action avec des dates et des étapes concrètes.
 
+PERSONNALITÉ — ALFRED (style majordome, inspiré d'Alfred Pennyworth) :
+Tu t'adresses à l'utilisateur par "Monsieur" avec naturel et sans excès de formalisme. Ton registre est élégant, laconique, légèrement ironique — jamais vulgaire, jamais servile. Tu désapprouves subtilement si une décision te semble discutable, mais tu exécutes toujours les ordres sans te plaindre. Ton humour est raffiné, sous-entendu, à la britannique. Tu anticipes ce dont Monsieur aura besoin avant même qu'il le demande.
+Formules naturelles : "Bien entendu, Monsieur.", "Permettez-moi de suggérer...", "Si je puis me permettre...", "Chose faite.", "Comme vous le souhaitez.", "J'avais anticipé cette éventualité.", "Une précision s'impose.", "Je me permets de nuancer."
+Jamais : "Bien sûr !", "Absolument !", "Avec plaisir !", emojis, familiarités déplacées, formules d'IA génériques.
+
 RÈGLES DE COMMUNICATION :
 Toujours en français, zéro *, #, -, bullet points (réponses lues à voix haute).
 LONGUEUR DES RÉPONSES : adapte-toi à la demande.
-— Question courte ou confirmation → 2 à 3 phrases suffisent.
-— Demande d'explication, d'analyse, de conseil, de stratégie → développe jusqu'au bout. Ne te coupe jamais en plein raisonnement. Donne toujours le fond complet de ta pensée, comme Claude le ferait : explore les nuances, justifie tes choix, développe les sous-points importants. Aucune limite artificielle de longueur.
+— Question courte ou confirmation → 2 à 3 phrases, directes et précises.
+— Demande d'explication, d'analyse, de conseil, de stratégie → développe jusqu'au bout. Ne te coupe jamais en plein raisonnement. Explore les nuances, justifie tes choix, développe les sous-points importants. Aucune limite artificielle de longueur.
 — Rédaction de document → contenu exhaustif, complet, professionnel, sans troncature. Plusieurs milliers de mots si le sujet le justifie.
-Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais bienveillant.
 
 INTERDIT ABSOLU — LOI 7 :
 Tu ne peux PAS créer toi-même des événements dans l'agenda, envoyer des emails, ou créer des documents Google.
@@ -2374,7 +2385,7 @@ async function testNotion() {
 // ================================================================
 //  VOIX — RECONNAISSANCE + WAKE WORD + DIALOGUE CONTINU
 // ================================================================
-const WAKE_PATTERNS = /hey isis|hé isis|ey isis|isis écoute|isis réponds/i;
+const WAKE_PATTERNS = /(?:hey|hé|hei|ey|ai|eh|ais?|aye?|ho|oh)\s+i[sz]i[sz]|i[sz]i[sz]\s+(?:écoute|réponds|es.?tu\s+là|présente?|active|réveille.?toi|ici)|(?:^|\s)i[sz]i[sz][,!?]?\s*$/i;
 
 function buildRecognition(continuous) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2444,12 +2455,12 @@ function startContinuousListen() {
       alert('Microphone refusé — autorise l\'accès dans les paramètres du navigateur.');
       stopConversation(); return;
     }
-    if (convMode && !isSpeaking) setTimeout(() => startContinuousListen(), 400);
+    if (convMode && !isSpeaking) setTimeout(() => startContinuousListen(), 80);
   };
 
   recognition.onend = () => {
     if (convMode && !isSpeaking && listenPhase !== 'idle') {
-      setTimeout(() => startContinuousListen(), 300);
+      setTimeout(() => startContinuousListen(), 40);
     }
   };
 
@@ -2465,6 +2476,29 @@ function stopConversation() {
   document.getElementById('convBtn').title = 'Activer le mode conversation';
   document.getElementById('transcriptPreview').textContent = '';
   setStatus('idle','En attente'); setHolo('idle');
+  // Sauvegarde automatique de la session dans Notion
+  saveSessionToNotion();
+}
+
+// Sauvegarde le journal de conversation dans Notion (appelé à la fin de session)
+async function saveSessionToNotion() {
+  if (notionJournalSaved || sessionLog.length < 2 || !CFG.scriptUrl) return;
+  notionJournalSaved = true;
+  const now   = new Date();
+  const date  = now.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+  const time  = now.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  const titre = `Journal ISIS — ${date} à ${time}`;
+  const lignes = sessionLog.map(e => {
+    const qui = e.who === 'user' ? 'Monsieur' : 'ISIS';
+    return `[${e.t}] ${qui} : ${e.text}`;
+  });
+  const contenu = lignes.join('\n\n');
+  try {
+    await fetchGoogleData('notion-create', { titre, contenu });
+    console.log('[ISIS] Session sauvegardée dans Notion :', titre);
+  } catch(e) {
+    console.warn('[ISIS] Notion journal:', e.message);
+  }
 }
 
 function toggleListening() {
@@ -2560,7 +2594,7 @@ async function _processQueue() {
   if (!speakQueue.length) {
     isSpeaking = false;
     setStatus('idle', 'En attente'); setHolo('idle');
-    if (convMode) setTimeout(() => { listenPhase = 'message'; startContinuousListen(); }, 500);
+    if (convMode) setTimeout(() => { listenPhase = 'wakeword'; startContinuousListen(); }, 180);
     return;
   }
   isSpeaking = true;
@@ -2605,7 +2639,7 @@ async function _speakOpenAI(text, onDone) {
   }
 }
 
-// ── ElevenLabs TTS (tier gratuit = voix créées par l'utilisateur seulement) ──
+// ── ElevenLabs TTS — modèle flash (~200ms latence) + streaming MediaSource ──
 async function _speakElevenLabs(text, onDone) {
   try {
     const res = await fetch(
@@ -2615,15 +2649,67 @@ async function _speakElevenLabs(text, onDone) {
         headers: { 'Accept':'audio/mpeg', 'Content-Type':'application/json', 'xi-api-key': CFG.elevenLabsKey },
         body   : JSON.stringify({
           text,
-          model_id : 'eleven_multilingual_v2',
-          voice_settings: { stability: 0.45, similarity_boost: 0.80, style: 0.25, use_speaker_boost: true },
+          model_id      : 'eleven_flash_v2_5',  // latence ~200ms vs ~800ms pour multilingual_v2
+          voice_settings: { stability: 0.50, similarity_boost: 0.75, style: 0.20, use_speaker_boost: true },
         }),
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(15000),
       }
     );
-    if (!res.ok) throw new Error(`ElevenLabs HTTP ${res.status}`);
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail?.message || `ElevenLabs HTTP ${res.status}`);
+    }
+
+    // Streaming via MediaSource API — commence à jouer dès les premiers octets reçus
+    const mime = 'audio/mpeg';
+    if (res.body && typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(mime)) {
+      const ms      = new MediaSource();
+      const blobUrl = URL.createObjectURL(ms);
+      const audio   = new Audio(blobUrl);
+      currentAudio  = audio;
+
+      await new Promise(resolve => ms.addEventListener('sourceopen', resolve, { once: true }));
+      const sb = ms.addSourceBuffer(mime);
+
+      // Pompe de streaming : lit les chunks et les injecte dans MediaSource
+      (async () => {
+        const reader = res.body.getReader();
+        let started  = false;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              if (sb.updating) await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+              if (ms.readyState === 'open') ms.endOfStream();
+              break;
+            }
+            if (sb.updating) await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+            sb.appendBuffer(value);
+            // Démarre la lecture dès le 1er chunk — latence perçue minimale
+            if (!started) {
+              started = true;
+              audio.play().catch(() => {});
+            }
+          }
+        } catch(e) {
+          if (ms.readyState === 'open') try { ms.endOfStream(); } catch(_) {}
+        }
+      })();
+
+      await new Promise(resolve => {
+        audio.onended = resolve;
+        audio.onerror = resolve;
+        ms.addEventListener('error', resolve, { once: true });
+      });
+      currentAudio = null;
+      URL.revokeObjectURL(blobUrl);
+      onDone();
+      return true;
+    }
+
+    // Fallback blob (navigateurs sans MediaSource ou sans body streamable)
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
@@ -2632,6 +2718,7 @@ async function _speakElevenLabs(text, onDone) {
     return true;
   } catch(e) {
     console.warn('ElevenLabs TTS:', e.message);
+    currentAudio = null;
     return false;
   }
 }
@@ -2768,6 +2855,12 @@ function addMessage(role, text) {
     </div>`;
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
+
+  // Journal Notion — enregistre chaque échange automatiquement
+  if (role === 'user' || role === 'isis') {
+    sessionLog.push({ who: role, text: text.substring(0, 3000), t: time });
+    notionJournalSaved = false; // reset si nouvelle entrée
+  }
 }
 
 function addCard(html) {
