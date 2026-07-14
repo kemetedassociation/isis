@@ -238,6 +238,7 @@ let holoViz       = null;
 let convMode      = false;
 let listenPhase   = 'idle';
 let pendingAction   = null;
+let _maxTokens      = 4096;  // overridé par callAIOneShot pour les docs
 let lastCreatedDoc  = null; // { titre, url, id } — mémorise le dernier doc créé
 
 // ================================================================
@@ -1135,7 +1136,10 @@ Quand un projet est mentionné, propose un plan d'action avec des dates et des �
 
 RÈGLES DE COMMUNICATION :
 Toujours en français, zéro *, #, -, bullet points (réponses lues à voix haute).
-Réponses directes, 2 à 3 phrases maximum sauf si détail demandé.
+LONGUEUR DES RÉPONSES : adapte-toi à la demande.
+— Question courte ou confirmation → 2 à 3 phrases suffisent.
+— Demande d'explication, d'analyse, de conseil, de stratégie → développe jusqu'au bout. Ne te coupe jamais en plein raisonnement. Donne toujours le fond complet de ta pensée, comme Claude le ferait : explore les nuances, justifie tes choix, développe les sous-points importants. Aucune limite artificielle de longueur.
+— Rédaction de document → contenu exhaustif, complet, professionnel, sans troncature. Plusieurs milliers de mots si le sujet le justifie.
 Tu tutoies, ton ton est confiant, direct, légèrement sarcastique mais bienveillant.
 
 INTERDIT ABSOLU — LOI 7 :
@@ -1183,7 +1187,7 @@ async function tryGeminiEndpoint({version, model}) {
   const body = {
     [sysKey]         : { parts:[{text: buildSystemPrompt()}] },
     contents         : history,
-    generationConfig : { temperature:.75, maxOutputTokens:550, topP:.9 },
+    generationConfig : { temperature:.75, maxOutputTokens:_maxTokens, topP:.9 },
   };
 
   const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -1218,7 +1222,7 @@ async function callGroq() {
         body: JSON.stringify({
           model,
           messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-          temperature: 0.75, max_tokens: 550,
+          temperature: 0.75, max_tokens: _maxTokens,
         }),
       });
       const data = await res.json();
@@ -1244,7 +1248,7 @@ async function callClaude() {
     },
     body: JSON.stringify({
       model    : 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
+      max_tokens: _maxTokens,
       system   : buildSystemPrompt(),
       messages : historyToOpenAI(),
     }),
@@ -1274,7 +1278,7 @@ async function callOpenRouter() {
           'HTTP-Referer' : window.location.href,
           'X-Title'      : 'ISIS Personal Assistant',
         },
-        body: JSON.stringify({ model, max_tokens: 600, messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()] }),
+        body: JSON.stringify({ model, max_tokens: _maxTokens, messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()] }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1295,7 +1299,7 @@ async function callMistral() {
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.mistralKey}` },
     body: JSON.stringify({
       model   : 'open-mistral-nemo',
-      max_tokens: 600,
+      max_tokens: _maxTokens,
       messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
     }),
   });
@@ -1311,7 +1315,7 @@ async function callCerebras() {
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.cerebrasKey}` },
     body: JSON.stringify({
       model   : 'llama3.3-70b',
-      max_tokens: 600,
+      max_tokens: _maxTokens,
       messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
     }),
   });
@@ -1330,7 +1334,7 @@ async function callOpenAI() {
         body: JSON.stringify({
           model,
           messages    : [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-          temperature : 0.75, max_tokens: 600,
+          temperature : 0.75, max_tokens: _maxTokens,
         }),
       });
       const data = await res.json();
@@ -1423,7 +1427,7 @@ async function executePendingAction() {
     }
     else if (type === 'create-doc') {
       result = await fetchGoogleData('create-doc', {
-        titre: data.titre, contenu: (data.contenu || '').substring(0, 2000),
+        titre: data.titre, contenu: (data.contenu || '').substring(0, 15000),
       });
       if (result.success) {
         // Mémoriser le doc pour pouvoir le modifier ensuite depuis la conversation
@@ -1455,11 +1459,13 @@ async function executePendingAction() {
   }
 }
 
-async function callAIOneShot(prompt) {
-  const saved = history;
-  history = [{ role:'user', parts:[{text: prompt}] }];
+async function callAIOneShot(prompt, maxTok = 8000) {
+  const saved    = history;
+  const savedMax = _maxTokens;
+  history    = [{ role:'user', parts:[{text: prompt}] }];
+  _maxTokens = maxTok;
   try { return await callAI(); }
-  finally { history = saved; }
+  finally { history = saved; _maxTokens = savedMax; }
 }
 
 // Extrait et répare le JSON retourné par l'IA (gère markdown, sauts de ligne, guillemets)
@@ -1546,9 +1552,10 @@ Instruction : ${instruction}`
 
 async function preparerDocument(instruction) {
   const raw = await callAIOneShot(
-    `Tu es ISIS, rédacteur expert. Ton rôle : ÉCRIRE LE TEXTE du document demandé. Tu n'as pas à accéder à Google Drive ou à créer quoi que ce soit — tu fournis juste le contenu textuel que le système enverra ensuite automatiquement à Drive.
+    `Tu es ISIS, rédacteur expert de haut niveau. Ton rôle : ÉCRIRE LE TEXTE COMPLET du document demandé. Tu n'as pas à accéder à Google Drive — tu fournis juste le contenu textuel que le système enverra automatiquement à Drive.
+LONGUEUR : rédige un document COMPLET, exhaustif et professionnel. Ne te limite pas en nombre de mots ou de lignes. Si le sujet mérite 2000 mots, écris 2000 mots. Développe chaque section en profondeur.
 RÈGLE ABSOLUE : réponds UNIQUEMENT avec du JSON compact sur UNE SEULE LIGNE, sans markdown, sans backtick, sans commentaire, sans explication. Utilise \\n pour les sauts de ligne dans le contenu.
-Format exact : {"titre":"titre court","contenu":"paragraphe 1\\n\\nparagraphe 2\\n\\nparagraphe 3"}
+Format exact : {"titre":"titre court","contenu":"section 1\\n\\nparagraphe détaillé...\\n\\nsection 2\\n\\nparagraphe détaillé..."}
 Rédige maintenant : ${instruction}`
   );
   const parsed = parseAIJson(raw);
@@ -1915,7 +1922,7 @@ Demande : "${userText}"`
       const mode   = info.mode || 'append';
 
       const result = await fetchGoogleData('edit-doc', {
-        nom: nomDoc, contenu: contenuIA.substring(0, 3000), mode,
+        nom: nomDoc, contenu: contenuIA.substring(0, 15000), mode,
       });
       removeThinking(thinkId);
       if (result.success) {
