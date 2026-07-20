@@ -23,7 +23,7 @@
   <meta property="og:description" content="Assistant IA personnel style JARVIS" />
   <meta property="og:image" content="./icon-512.png" />
 
-  <link rel="stylesheet" href="./style.css?v=10" />
+  <link rel="stylesheet" href="./style.css?v=11" />
 
   <!-- Service Worker — enregistrement immédiat -->
   <script>
@@ -198,6 +198,30 @@
           <button class="test-btn" onclick="previewElevenVoice()">▶</button>
         </div>
         <div id="elevenResult" class="test-result"></div>
+
+        <label>🔵 Clé Azure Speech — Gratuit 500k chars/mois ⭐ <small style="opacity:.7">(portal.azure.com → Speech → F0 gratuit)</small></label>
+        <div class="input-row">
+          <input type="password" id="settingsAzureKey" placeholder="Clé Azure Speech..." />
+          <button class="test-btn" onclick="testAzure()">Test ▶</button>
+        </div>
+        <div class="input-row" style="gap:6px">
+          <select id="settingsAzureRegion" style="flex:1;background:var(--input-bg,#1a1a2e);color:inherit;border:1px solid #333;border-radius:6px;padding:6px 8px;font-size:12px">
+            <option value="francecentral">francecentral (Paris) ★</option>
+            <option value="westeurope">westeurope (Amsterdam)</option>
+            <option value="northeurope">northeurope (Dublin)</option>
+            <option value="eastus">eastus (Virginie)</option>
+          </select>
+          <select id="settingsAzureVoice" style="flex:1.4;background:var(--input-bg,#1a1a2e);color:inherit;border:1px solid #333;border-radius:6px;padding:6px 8px;font-size:12px">
+            <option value="fr-FR-DeniseNeural">DeniseNeural — calme, pro ★</option>
+            <option value="fr-FR-EloiseNeural">EloiseNeural — douce</option>
+            <option value="fr-FR-BrigitteNeural">BrigitteNeural — chaleureuse</option>
+            <option value="fr-FR-CoralMultilingualNeural">CoralMultilingual — expressive</option>
+            <option value="fr-FR-VivienneMultilingualNeural">VivienneMultilingual — moderne</option>
+            <option value="fr-FR-HenriNeural">HenriNeural — masculin</option>
+          </select>
+        </div>
+        <div id="azureResult" class="test-result" style="display:none"></div>
+
         <label>⭐ Clé OpenRouter — 100% Gratuit (openrouter.ai/keys)</label>
         <div class="input-row">
           <input type="password" id="settingsOpenrouterKey" placeholder="sk-or-v1-..." />
@@ -286,7 +310,7 @@
 
   </div><!-- /.app -->
 
-  <script src="./script.js?v=10"></script>
+  <script src="./script.js?v=11"></script>
   <script>
     // ── PWA iOS Banner ──
     (function() {

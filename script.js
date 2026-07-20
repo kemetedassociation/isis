@@ -15,6 +15,9 @@ const CFG = {
   cerebrasKey    : localStorage.getItem('isis_cerebras_key')     || '',
   elevenLabsKey  : localStorage.getItem('isis_elevenlabs_key')   || '',
   elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || 'Vt2Yqbi64ekHaabvz7ddla',
+  azureKey       : localStorage.getItem('isis_azure_key')        || '',
+  azureRegion    : localStorage.getItem('isis_azure_region')     || 'francecentral',
+  azureVoice     : localStorage.getItem('isis_azure_voice')      || 'fr-FR-DeniseNeural',
   scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
@@ -582,6 +585,9 @@ function showApp() {
     if (s('settingsCerebrasKey'))    s('settingsCerebrasKey').value    = CFG.cerebrasKey    || '';
     if (s('settingsElevenLabsKey'))  s('settingsElevenLabsKey').value  = CFG.elevenLabsKey  || '';
     if (s('settingsElevenVoice'))    s('settingsElevenVoice').value    = CFG.elevenVoiceId  || '';
+    if (s('settingsAzureKey'))       s('settingsAzureKey').value       = CFG.azureKey       || '';
+    if (s('settingsAzureRegion'))    s('settingsAzureRegion').value    = CFG.azureRegion    || 'francecentral';
+    if (s('settingsAzureVoice'))     s('settingsAzureVoice').value     = CFG.azureVoice     || 'fr-FR-DeniseNeural';
     if (s('settingsScriptUrl')) s('settingsScriptUrl').value = CFG.scriptUrl  || '';
     if (s('settingsGoals'))     s('settingsGoals').value     = memory.objectifs || '';
     if (s('settingsInterests')) s('settingsInterests').value = memory.interets  || '';
@@ -894,6 +900,17 @@ function saveSettingsPanel() {
   const elevenVoice = document.getElementById('settingsElevenVoice')?.value.trim()   || '';
   if (elevenKey)   { CFG.elevenLabsKey = elevenKey;   localStorage.setItem('isis_elevenlabs_key',   elevenKey);   }
   if (elevenVoice) { CFG.elevenVoiceId = elevenVoice; localStorage.setItem('isis_elevenlabs_voice', elevenVoice); }
+  const azureKey    = document.getElementById('settingsAzureKey')?.value.trim()    || '';
+  const azureRegion = document.getElementById('settingsAzureRegion')?.value.trim() || 'francecentral';
+  const azureVoice  = document.getElementById('settingsAzureVoice')?.value.trim()  || 'fr-FR-DeniseNeural';
+  if (azureKey) {
+    CFG.azureKey    = azureKey;
+    CFG.azureRegion = azureRegion;
+    CFG.azureVoice  = azureVoice;
+    localStorage.setItem('isis_azure_key',    azureKey);
+    localStorage.setItem('isis_azure_region', azureRegion);
+    localStorage.setItem('isis_azure_voice',  azureVoice);
+  }
 
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
@@ -964,7 +981,7 @@ async function previewElevenVoice() {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
       method:'POST',
       headers:{'Accept':'audio/mpeg','Content-Type':'application/json','xi-api-key':key},
-      body: JSON.stringify({ text:'Bonjour, je suis ISIS, votre assistant personnel.', model_id:'eleven_flash_v2_5', voice_settings:{stability:0.50,similarity_boost:0.75,style:0.20,use_speaker_boost:true} }),
+      body: JSON.stringify({ text:'Bonjour Monsieur, je suis ISIS. Bien entendu.', model_id:'eleven_flash_v2_5', voice_settings:{stability:0.50,similarity_boost:0.75,style:0.20,use_speaker_boost:true} }),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -976,6 +993,50 @@ async function previewElevenVoice() {
     box.className='test-result ok'; box.textContent='▶ Aperçu en cours...';
   } catch(e) {
     box.className='test-result err'; box.textContent=`✗ ${e.message}`;
+  }
+}
+
+async function testAzure() {
+  const box    = document.getElementById('azureResult');
+  const key    = document.getElementById('settingsAzureKey').value.trim();
+  const region = document.getElementById('settingsAzureRegion').value.trim() || 'francecentral';
+  const voice  = document.getElementById('settingsAzureVoice').value.trim()  || 'fr-FR-DeniseNeural';
+  box.style.display = 'block';
+  if (!key) {
+    box.className = 'test-result err';
+    box.textContent = '✗ Entre une clé Azure Speech (portal.azure.com → Speech → gratuit 500k chars/mois).';
+    return;
+  }
+  box.className = 'test-result'; box.textContent = 'Test Azure TTS...';
+  try {
+    const ssml = `<speak version='1.0' xml:lang='fr-FR'><voice name='${voice}'>Bonjour Monsieur. ISIS à votre service. Bien entendu.</voice></speak>`;
+    const res = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method : 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': key,
+        'Content-Type'             : 'application/ssml+xml',
+        'X-Microsoft-OutputFormat' : 'audio-24khz-160kbitrate-mono-mp3',
+      },
+      body  : ssml,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} — vérifie clé et région`);
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.play();
+    // Sauvegarder
+    CFG.azureKey    = key;
+    CFG.azureRegion = region;
+    CFG.azureVoice  = voice;
+    localStorage.setItem('isis_azure_key',    key);
+    localStorage.setItem('isis_azure_region', region);
+    localStorage.setItem('isis_azure_voice',  voice);
+    box.className = 'test-result ok';
+    box.textContent = `✓ Azure TTS actif — voix ${voice} validée. Fallback fiable activé.`;
+  } catch(e) {
+    box.className = 'test-result err'; box.textContent = `✗ ${e.message}`;
   }
 }
 
@@ -2603,9 +2664,13 @@ async function _processQueue() {
 
   const next = () => { onDone?.(); _processQueue(); };
 
-  // Cascade voix : ElevenLabs → OpenAI TTS → Navigateur
+  // Cascade voix : ElevenLabs → Azure TTS → OpenAI TTS → Navigateur
   if (CFG.elevenLabsKey) {
     const ok = await _speakElevenLabs(text, next);
+    if (ok) return;
+  }
+  if (CFG.azureKey) {
+    const ok = await _speakAzure(text, next);
     if (ok) return;
   }
   if (CFG.openaiKey) {
@@ -2613,6 +2678,46 @@ async function _processQueue() {
     if (ok) return;
   }
   _speakBrowser(text, next);
+}
+
+// ── Azure Cognitive Services TTS — 500k chars/mois GRATUITS, voix neurales françaises ──
+// Créer un compte gratuit : portal.azure.com → "Speech" → région francecentral
+async function _speakAzure(text, onDone) {
+  try {
+    const safe = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+    const ssml = `<speak version='1.0' xml:lang='fr-FR'><voice xml:lang='fr-FR' name='${CFG.azureVoice}'><prosody rate='0%' pitch='0%'>${safe}</prosody></voice></speak>`;
+    const res = await fetch(
+      `https://${CFG.azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`,
+      {
+        method : 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': CFG.azureKey,
+          'Content-Type'             : 'application/ssml+xml',
+          'X-Microsoft-OutputFormat' : 'audio-24khz-160kbitrate-mono-mp3',
+        },
+        body  : ssml,
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+    if (!res.ok) throw new Error(`Azure TTS HTTP ${res.status}`);
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    await audio.play();
+    return true;
+  } catch(e) {
+    console.warn('Azure TTS:', e.message);
+    currentAudio = null;
+    return false;
+  }
 }
 
 // ── OpenAI TTS (tts-1, voix "nova" — naturelle, utilise la clé openaiKey existante) ──
