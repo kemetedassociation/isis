@@ -23,7 +23,7 @@
   <meta property="og:description" content="Assistant IA personnel style JARVIS" />
   <meta property="og:image" content="./icon-512.png" />
 
-  <link rel="stylesheet" href="./style.css?v=11" />
+  <link rel="stylesheet" href="./style.css?v=12" />
 
   <!-- Service Worker — enregistrement immédiat -->
   <script>
@@ -222,6 +222,24 @@
         </div>
         <div id="azureResult" class="test-result" style="display:none"></div>
 
+        <label>🟢 Google Cloud TTS — Gratuit 1M chars/mois ⭐ <small style="opacity:.7">(fonctionne avec ton Gmail)</small></label>
+        <div class="input-row">
+          <input type="password" id="settingsGoogleTTSKey" placeholder="AIza..." />
+          <button class="test-btn" onclick="testGoogleTTS()">Test ▶</button>
+        </div>
+        <select id="settingsGoogleTTSVoice" style="width:100%;background:var(--input-bg,#1a1a2e);color:inherit;border:1px solid #333;border-radius:6px;padding:6px 8px;font-size:12px;margin-top:4px">
+          <option value="fr-FR-Neural2-A">Neural2-A — calme, féminine ★ (recommandée)</option>
+          <option value="fr-FR-Neural2-C">Neural2-C — féminine, alternative</option>
+          <option value="fr-FR-Neural2-E">Neural2-E — féminine, expressive</option>
+          <option value="fr-FR-Neural2-B">Neural2-B — masculine</option>
+          <option value="fr-FR-Neural2-D">Neural2-D — masculine, profond</option>
+          <option value="fr-FR-Wavenet-A">Wavenet-A — féminine (4M/mois gratuits)</option>
+        </select>
+        <div style="font-size:11px;opacity:.55;margin-top:4px;line-height:1.5">
+          Guide : <b>console.cloud.google.com</b> → sélectionner un projet → APIs → Bibliothèque → "Cloud Text-to-Speech" → Activer → Identifiants → Créer une clé API
+        </div>
+        <div id="googleTTSResult" class="test-result" style="display:none"></div>
+
         <label>⭐ Clé OpenRouter — 100% Gratuit (openrouter.ai/keys)</label>
         <div class="input-row">
           <input type="password" id="settingsOpenrouterKey" placeholder="sk-or-v1-..." />
@@ -310,7 +328,7 @@
 
   </div><!-- /.app -->
 
-  <script src="./script.js?v=11"></script>
+  <script src="./script.js?v=12"></script>
   <script>
     // ── PWA iOS Banner ──
     (function() {

@@ -1,10 +1,10 @@
 // ISIS Service Worker v5 — Cache-first + invalidation forcée
-const CACHE = 'isis-v11';
+const CACHE = 'isis-v12';
 const STATIC = [
   './',
   './index.html',
-  './style.css?v=11',
-  './script.js?v=11',
+  './style.css?v=12',
+  './script.js?v=12',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
