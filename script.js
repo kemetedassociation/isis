@@ -18,6 +18,8 @@ const CFG = {
   azureKey       : localStorage.getItem('isis_azure_key')        || '',
   azureRegion    : localStorage.getItem('isis_azure_region')     || 'francecentral',
   azureVoice     : localStorage.getItem('isis_azure_voice')      || 'fr-FR-DeniseNeural',
+  googleTTSKey   : localStorage.getItem('isis_google_tts_key')   || '',
+  googleTTSVoice : localStorage.getItem('isis_google_tts_voice') || 'fr-FR-Neural2-A',
   scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
@@ -588,6 +590,8 @@ function showApp() {
     if (s('settingsAzureKey'))       s('settingsAzureKey').value       = CFG.azureKey       || '';
     if (s('settingsAzureRegion'))    s('settingsAzureRegion').value    = CFG.azureRegion    || 'francecentral';
     if (s('settingsAzureVoice'))     s('settingsAzureVoice').value     = CFG.azureVoice     || 'fr-FR-DeniseNeural';
+    if (s('settingsGoogleTTSKey'))   s('settingsGoogleTTSKey').value   = CFG.googleTTSKey   || '';
+    if (s('settingsGoogleTTSVoice')) s('settingsGoogleTTSVoice').value = CFG.googleTTSVoice || 'fr-FR-Neural2-A';
     if (s('settingsScriptUrl')) s('settingsScriptUrl').value = CFG.scriptUrl  || '';
     if (s('settingsGoals'))     s('settingsGoals').value     = memory.objectifs || '';
     if (s('settingsInterests')) s('settingsInterests').value = memory.interets  || '';
@@ -911,6 +915,14 @@ function saveSettingsPanel() {
     localStorage.setItem('isis_azure_region', azureRegion);
     localStorage.setItem('isis_azure_voice',  azureVoice);
   }
+  const googleTTSKey   = document.getElementById('settingsGoogleTTSKey')?.value.trim()   || '';
+  const googleTTSVoice = document.getElementById('settingsGoogleTTSVoice')?.value.trim() || 'fr-FR-Neural2-A';
+  if (googleTTSKey) {
+    CFG.googleTTSKey   = googleTTSKey;
+    CFG.googleTTSVoice = googleTTSVoice;
+    localStorage.setItem('isis_google_tts_key',   googleTTSKey);
+    localStorage.setItem('isis_google_tts_voice', googleTTSVoice);
+  }
 
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
@@ -1035,6 +1047,64 @@ async function testAzure() {
     localStorage.setItem('isis_azure_voice',  voice);
     box.className = 'test-result ok';
     box.textContent = `✓ Azure TTS actif — voix ${voice} validée. Fallback fiable activé.`;
+  } catch(e) {
+    box.className = 'test-result err'; box.textContent = `✗ ${e.message}`;
+  }
+}
+
+async function testGoogleTTS() {
+  const box   = document.getElementById('googleTTSResult');
+  const key   = document.getElementById('settingsGoogleTTSKey').value.trim();
+  const voice = document.getElementById('settingsGoogleTTSVoice').value.trim() || 'fr-FR-Neural2-A';
+  box.style.display = 'block';
+  if (!key) {
+    box.className = 'test-result err';
+    box.textContent = '✗ Entre une clé Google Cloud (AIza...).';
+    return;
+  }
+  box.className = 'test-result'; box.textContent = 'Test Google TTS...';
+  try {
+    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({
+        input      : { text: 'Bonjour Monsieur. ISIS à votre service.' },
+        voice      : { languageCode: 'fr-FR', name: voice },
+        audioConfig: { audioEncoding: 'MP3' },
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    // Lire le corps même en cas d'erreur pour avoir le message précis
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const googleMsg = data?.error?.message || data?.error?.status || '';
+      let tip = '';
+      if (res.status === 400 && /API_KEY_INVALID|invalid/i.test(googleMsg)) {
+        tip = 'Clé incorrecte — copie-la depuis console.cloud.google.com → Identifiants.';
+      } else if (res.status === 403 && /not been used|not enabled|disabled/i.test(googleMsg)) {
+        tip = 'API Text-to-Speech non activée → console.cloud.google.com → APIs et services → Bibliothèque → cherche "Cloud Text-to-Speech" → Activer.';
+      } else if (res.status === 403 && /billing/i.test(googleMsg)) {
+        tip = 'Facturation non liée → console.cloud.google.com → Facturation → activer (gratuit jusqu\'à 1M chars/mois, carte requise mais non débitée).';
+      } else if (res.status === 403) {
+        tip = 'Permission refusée — l\'API Text-to-Speech doit être ACTIVÉE dans ton projet Google Cloud ET la facturation liée.';
+      } else {
+        tip = googleMsg || `HTTP ${res.status}`;
+      }
+      throw new Error(tip);
+    }
+    const { audioContent } = data;
+    const bytes = Uint8Array.from(atob(audioContent), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: 'audio/mp3' });
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.play();
+    CFG.googleTTSKey   = key;
+    CFG.googleTTSVoice = voice;
+    localStorage.setItem('isis_google_tts_key',   key);
+    localStorage.setItem('isis_google_tts_voice', voice);
+    box.className = 'test-result ok';
+    box.textContent = `✓ Google TTS actif — ${voice} validée.`;
   } catch(e) {
     box.className = 'test-result err'; box.textContent = `✗ ${e.message}`;
   }
@@ -2664,9 +2734,13 @@ async function _processQueue() {
 
   const next = () => { onDone?.(); _processQueue(); };
 
-  // Cascade voix : ElevenLabs → Azure TTS → OpenAI TTS → Navigateur
+  // Cascade voix : ElevenLabs → Google TTS → Azure TTS → OpenAI TTS → StreamElements → Navigateur
   if (CFG.elevenLabsKey) {
     const ok = await _speakElevenLabs(text, next);
+    if (ok) return;
+  }
+  if (CFG.googleTTSKey) {
+    const ok = await _speakGoogleTTS(text, next);
     if (ok) return;
   }
   if (CFG.azureKey) {
@@ -2677,7 +2751,47 @@ async function _processQueue() {
     const ok = await _speakOpenAI(text, next);
     if (ok) return;
   }
+  // StreamElements : voix française gratuite sans clé (toujours disponible)
+  {
+    const ok = await _speakStreamElements(text, next);
+    if (ok) return;
+  }
   _speakBrowser(text, next);
+}
+
+// ── Google Cloud TTS — 1M chars/mois GRATUITS Neural2, voix françaises naturelles ──
+// Obtenir une clé : console.cloud.google.com → APIs → Text-to-Speech → Credentials → API key
+async function _speakGoogleTTS(text, onDone) {
+  try {
+    const res = await fetch(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${CFG.googleTTSKey}`,
+      {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+          input      : { text },
+          voice      : { languageCode: 'fr-FR', name: CFG.googleTTSVoice || 'fr-FR-Neural2-A' },
+          audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0, pitch: 0 },
+        }),
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+    if (!res.ok) throw new Error(`Google TTS HTTP ${res.status}`);
+    const { audioContent } = await res.json();
+    const bytes = Uint8Array.from(atob(audioContent), c => c.charCodeAt(0));
+    const blob  = new Blob([bytes], { type: 'audio/mp3' });
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
+    await audio.play();
+    return true;
+  } catch(e) {
+    console.warn('Google TTS:', e.message);
+    currentAudio = null;
+    return false;
+  }
 }
 
 // ── Azure Cognitive Services TTS — 500k chars/mois GRATUITS, voix neurales françaises ──
@@ -2823,6 +2937,50 @@ async function _speakElevenLabs(text, onDone) {
     return true;
   } catch(e) {
     console.warn('ElevenLabs TTS:', e.message);
+    currentAudio = null;
+    return false;
+  }
+}
+
+// ── StreamElements TTS — voix françaises Google SANS clé, SANS compte ──
+// Utilisé par les streamers Twitch, gratuit, CORS OK, ~500 chars max par chunk
+async function _speakStreamElements(text, onDone) {
+  const VOICE   = 'fr-FR-Wavenet-C';  // voix féminine naturelle
+  const MAX     = 480;
+  // Découpe en morceaux à la limite de phrase ou de mot
+  const chunks  = [];
+  let   rem     = text.trim();
+  while (rem.length > MAX) {
+    let cut = rem.lastIndexOf('.', MAX);
+    if (cut < 20) cut = rem.lastIndexOf(' ', MAX);
+    if (cut < 1)  cut = MAX;
+    chunks.push(rem.slice(0, cut + 1).trim());
+    rem = rem.slice(cut + 1).trim();
+  }
+  if (rem) chunks.push(rem);
+
+  try {
+    for (const chunk of chunks) {
+      if (!chunk) continue;
+      const res = await fetch(
+        `https://api.streamelements.com/kappa/v2/speech?voice=${VOICE}&text=${encodeURIComponent(chunk)}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (!res.ok) throw new Error(`SE HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      await new Promise((resolve, reject) => {
+        const audio = new Audio(url);
+        currentAudio = audio;
+        audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
+        audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; reject(new Error('audio error')); };
+        audio.play().catch(reject);
+      });
+    }
+    onDone();
+    return true;
+  } catch(e) {
+    console.warn('StreamElements TTS:', e.message);
     currentAudio = null;
     return false;
   }
