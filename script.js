@@ -14,7 +14,7 @@ const CFG = {
   mistralKey     : localStorage.getItem('isis_mistral_key')      || '',
   cerebrasKey    : localStorage.getItem('isis_cerebras_key')     || '',
   elevenLabsKey  : localStorage.getItem('isis_elevenlabs_key')   || '',
-  elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || 'Vt2Yqbi64ekHaabvz7ddla',
+  elevenVoiceId  : localStorage.getItem('isis_elevenlabs_voice') || '21m00Tcm4TlvDq8ikWAM',
   azureKey       : localStorage.getItem('isis_azure_key')        || '',
   azureRegion    : localStorage.getItem('isis_azure_region')     || 'francecentral',
   azureVoice     : localStorage.getItem('isis_azure_voice')      || 'fr-FR-DeniseNeural',
@@ -966,7 +966,7 @@ async function testElevenLabs() {
   box.className = 'test-result';
   box.textContent = 'Test ElevenLabs...';
   const key     = document.getElementById('settingsElevenLabsKey').value.trim();
-  const voiceId = document.getElementById('settingsElevenVoice').value.trim() || 'Vt2Yqbi64ekHaabvz7ddla';
+  const voiceId = document.getElementById('settingsElevenVoice').value.trim() || '21m00Tcm4TlvDq8ikWAM';
   if (!key) { box.className='test-result err'; box.textContent='Entre une clé ElevenLabs (elevenlabs.io).'; return; }
   try {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
