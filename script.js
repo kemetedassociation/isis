@@ -727,11 +727,12 @@ function showApp() {
     removeThinking(thinkId);
     addCard(renderMorningBriefCard(brief, forecast));
 
-    // Résumé vocal
+    // Résumé vocal — inclut désormais le pronostic détaillé, pas juste le prix du BTC
     const w = brief.weather;
     const btc = brief.market?.crypto?.bitcoin;
     let voiceMsg = w ? `${w.temp} degrés à ${w.city}, ${(w.desc || '').toLowerCase()}. ` : '';
     if (btc) voiceMsg += `Bitcoin à ${btc.eur?.toLocaleString('fr-FR')} euros. `;
+    if (forecast) voiceMsg += forecast;
     if (voiceMsg.trim()) speak(voiceMsg);
 
     await checkEtatInitial();
