@@ -40,6 +40,7 @@ function doGet(e) {
       prochaineAction : e.parameter.prochaineAction || '',
     });
     else if (action === 'crm-update-statut') result = crmUpdateContactStatut(e.parameter.nom || '', e.parameter.statut || '');
+    else if (action === 'crm-sync-sheet')  result = crmInitSheetSync();
     else if (action === 'send-email')      result = sendEmailISIS(e.parameter.to || '', e.parameter.subject || '', e.parameter.body || '');
     else if (action === 'create-event')    result = createCalendarEvent({
       titre : e.parameter.titre || '', debut: e.parameter.debut || '', fin: e.parameter.fin || '',
@@ -288,6 +289,111 @@ function _crmPageToContact(page) {
     prochaineAction: p['Prochaine action']?.date?.start || '',
     url            : page.url,
   };
+}
+
+// ============================================================
+//  CRM — miroir Google Sheet, synchronisé dans les deux sens
+//  Notion → Sheet : à la demande (action crm-sync-sheet)
+//  Sheet → Notion : automatique via le trigger crmOnSheetEdit
+// ============================================================
+const CRM_SHEET_COLS = ['Nom','Statut','Téléphone','Email','Entreprise','Notes','Prochaine action','NotionPageID','Notion URL'];
+
+function crmGetOrCreateSheet() {
+  const props = PropertiesService.getScriptProperties();
+  const existingId = props.getProperty('CRM_SHEET_ID');
+  if (existingId) {
+    try { return SpreadsheetApp.openById(existingId); } catch(e) { /* recréée ci-dessous */ }
+  }
+
+  const ss    = SpreadsheetApp.create('ISIS — CRM');
+  const sheet = ss.getActiveSheet();
+  sheet.setName('Contacts');
+  sheet.getRange(1, 1, 1, CRM_SHEET_COLS.length).setValues([CRM_SHEET_COLS]);
+  sheet.setFrozenRows(1);
+  sheet.getRange(2, 3, 998, 1).setNumberFormat('@'); // Téléphone en texte — évite que Sheets avale le "+"
+  props.setProperty('CRM_SHEET_ID', ss.getId());
+  return ss;
+}
+
+function crmSyncToSheet() {
+  const listRes = crmListContacts('');
+  if (listRes.error) return { error: listRes.error };
+
+  const ss      = crmGetOrCreateSheet();
+  const sheet   = ss.getSheetByName('Contacts') || ss.getActiveSheet();
+  sheet.getRange(2, 3, 998, 1).setNumberFormat('@'); // corrige aussi les sheets déjà créés avant ce fix
+  const lastRow = sheet.getLastRow();
+
+  const rowByPageId = {};
+  if (lastRow > 1) {
+    sheet.getRange(2, 8, lastRow - 1, 1).getValues().forEach((r, i) => { if (r[0]) rowByPageId[r[0]] = i + 2; });
+  }
+
+  listRes.contacts.forEach(c => {
+    const row = [c.nom, c.statut, c.telephone, c.email, c.entreprise, c.notes, c.prochaineAction, c.id, c.url];
+    if (rowByPageId[c.id]) sheet.getRange(rowByPageId[c.id], 1, 1, row.length).setValues([row]);
+    else                   sheet.appendRow(row);
+  });
+
+  return { success: true, url: ss.getUrl(), total: listRes.contacts.length };
+}
+
+function crmInitSheetSync() {
+  const ss = crmGetOrCreateSheet();
+  const hasTrigger = ScriptApp.getProjectTriggers()
+    .some(t => t.getHandlerFunction() === 'crmOnSheetEdit' && t.getTriggerSourceId() === ss.getId());
+  if (!hasTrigger) ScriptApp.newTrigger('crmOnSheetEdit').forSpreadsheet(ss).onEdit().create();
+  return crmSyncToSheet();
+}
+
+// Trigger installable — se déclenche sur toute édition manuelle du Sheet CRM
+function crmOnSheetEdit(e) {
+  try {
+    const sheet = e.range.getSheet();
+    if (sheet.getName() !== 'Contacts') return;
+    const row = e.range.getRow();
+    if (row === 1) return;
+    const col = e.range.getColumn();
+    if (col >= 8) return; // colonnes NotionPageID / Notion URL : lecture seule
+
+    const values = sheet.getRange(row, 1, 1, CRM_SHEET_COLS.length).getValues()[0];
+    const [nom, statut, telephone, email, entreprise, notes, prochaineAction, pageId] = values;
+    if (!pageId) return; // ligne pas encore liée à une page Notion
+
+    crmUpdateContactFields(pageId, { nom, statut, telephone, email, entreprise, notes, prochaineAction });
+  } catch(err) {
+    // Ne jamais bloquer l'édition du Sheet même si la synchro échoue
+  }
+}
+
+function crmUpdateContactFields(pageId, params) {
+  if (!NOTION_KEY || !pageId) return { error: 'Configuration manquante.' };
+
+  const properties = {};
+  if (params.nom)    properties['Name']   = { title: [{ text: { content: String(params.nom) } }] };
+  if (params.statut) properties['Statut'] = { select: { name: String(params.statut) } };
+  properties['Téléphone']  = { phone_number: params.telephone ? String(params.telephone) : null };
+  properties['Email']      = { email: params.email ? String(params.email) : null };
+  properties['Entreprise'] = { rich_text: params.entreprise ? [{ text: { content: String(params.entreprise) } }] : [] };
+  properties['Notes']      = { rich_text: params.notes ? [{ text: { content: String(params.notes) } }] : [] };
+  if (params.prochaineAction) properties['Prochaine action'] = { date: { start: _sheetDateToISO(params.prochaineAction) } };
+
+  const options = {
+    method            : 'patch',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({ properties }),
+    muteHttpExceptions: true,
+  };
+  const res  = UrlFetchApp.fetch(`https://api.notion.com/v1/pages/${String(pageId).replace(/-/g,'')}`, options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+  return { success: true };
+}
+
+function _sheetDateToISO(val) {
+  if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(val);
 }
 
 // ============================================================

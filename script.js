@@ -290,6 +290,26 @@ class HoloViz {
     } catch(e) {}
   }
 
+  // Branche l'analyseur sur la voix d'ISIS elle-même (blob: audio des TTS)
+  // pour que le hologramme réagisse à sa propre voix pendant qu'elle parle.
+  connectAudioElement(audioEl) {
+    try {
+      if (!this._audioCtx) this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = this._audioCtx;
+      if (ac.state === 'suspended') ac.resume();
+      const source   = ac.createMediaElementSource(audioEl);
+      const analyser = ac.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(ac.destination);
+      this.analyser  = analyser;
+      this.audioData = new Uint8Array(analyser.frequencyBinCount);
+    } catch(e) {
+      // Élément déjà connecté ou navigateur non supporté — le halo retombe
+      // sur l'onde synthétique existante, aucune perte fonctionnelle.
+    }
+  }
+
   col(a=1) {
     const map = {
       idle     : `rgba(0,200,255,${a*.35})`,
@@ -1292,7 +1312,7 @@ Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'
 NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
 
 CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations.
-Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté". Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
+Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté", "synchronise mon CRM" (crée/ouvre un Google Sheet miroir, synchronisé dans les deux sens avec Notion). Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
 }
@@ -2125,6 +2145,31 @@ Demande : "${userText}"`
   const wantsCrmList = /(?:liste|montre|affiche|voir|donne[\s-]?moi)\s+(?:mes\s+|les\s+)?contacts?\b|\bmon\s+crm\b|\ble\s+crm\b|pipeline\s+(?:commercial|de\s+vente|crm)|contacts?\s+(?:du|dans\s+le|sur\s+le)\s+crm/i.test(ut);
   const wantsCrmAdd  = /ajoute(?:r)?\s+.{0,60}(?:dans|au|à)\s+(?:le\s+|mon\s+)?crm|(?:crée|enregistre|inscris|ajoute)\s+(?:un\s+|ce\s+|cette?\s+)?(?:nouveau\s+)?contact\b/i.test(ut);
   const crmStatusMatch = ut.match(/(?:passe|marque|mets?|change)\s+(.{2,50}?)\s+(?:en|au\s+statut\s+de|au\s+statut|comme)\s+(prospect|contact[ée]e?|proposition\s*envoy[ée]e?|client|perdu|gagn[ée])\b/i);
+  const wantsCrmSheet = /(?:synchronise|sync)\s+(?:mon\s+|le\s+)?crm|tableau\s+(?:google\s+)?(?:crm|contacts?)|(?:crée|génère|ouvre)\s+(?:un\s+|le\s+)?(?:sheet|tableur|google\s+sheet)\s+(?:crm|contacts?)|crm\s+(?:sur\s+)?(?:sheet|tableur|google\s+sheet)/i.test(ut);
+
+  if (wantsCrmSheet && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Synchronisation du tableau CRM...'); setHolo('thinking');
+    try {
+      const result = await fetchGoogleData('crm-sync-sheet');
+      removeThinking(thinkId);
+      if (result.success) {
+        const r = `Tableau CRM synchronisé — ${result.total} contact(s). Les modifications que tu fais dans le Sheet se répercutent automatiquement dans Notion.`;
+        addMessage('isis', r); speak(r);
+        addCard(renderFolderCard('ISIS — CRM (Google Sheet)', result.url));
+        history.push({ role:'model', parts:[{text:r}] });
+      } else {
+        const m = `Impossible de synchroniser le tableau : ${result.error}`;
+        addMessage('isis', m); speak(m);
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Erreur de synchronisation CRM : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
 
   if (wantsCrmList && CFG.scriptUrl) {
     const thinkId = addThinking();
@@ -2900,6 +2945,7 @@ async function _speakGoogleTTS(text, onDone) {
     const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
+    if (holoViz) holoViz.connectAudioElement(audio);
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     await audio.play();
@@ -2940,6 +2986,7 @@ async function _speakAzure(text, onDone) {
     const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
+    if (holoViz) holoViz.connectAudioElement(audio);
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     await audio.play();
@@ -2965,6 +3012,7 @@ async function _speakOpenAI(text, onDone) {
     const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
+    if (holoViz) holoViz.connectAudioElement(audio);
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     await audio.play();
@@ -3002,8 +3050,8 @@ async function _speakElevenLabs(text, onDone) {
       const ms      = new MediaSource();
       const blobUrl = URL.createObjectURL(ms);
       const audio   = new Audio(blobUrl);
-      currentAudio  = audio;
-
+      currentAudio = audio;
+      if (holoViz) holoViz.connectAudioElement(audio);
       await new Promise(resolve => ms.addEventListener('sourceopen', resolve, { once: true }));
       const sb = ms.addSourceBuffer(mime);
 
@@ -3048,6 +3096,7 @@ async function _speakElevenLabs(text, onDone) {
     const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
+    if (holoViz) holoViz.connectAudioElement(audio);
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; onDone(); };
     await audio.play();
@@ -3089,6 +3138,7 @@ async function _speakStreamElements(text, onDone) {
       await new Promise((resolve, reject) => {
         const audio = new Audio(url);
         currentAudio = audio;
+        if (holoViz) holoViz.connectAudioElement(audio);
         audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
         audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; reject(new Error('audio error')); };
         audio.play().catch(reject);
