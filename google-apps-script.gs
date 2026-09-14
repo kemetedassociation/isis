@@ -1,6 +1,6 @@
 // ============================================================
-//  ISIS — GOOGLE APPS SCRIPT v5
-//  Proxy pour : Gmail + Google Agenda + Notion + CRM
+//  ISIS — GOOGLE APPS SCRIPT v6
+//  Proxy pour : Gmail + Google Agenda + Notion + CRM + Drive (écriture)
 //
 //  CONFIGURATION :
 //  1. Collez votre clé Notion ci-dessous (ligne NOTION_KEY)
@@ -40,8 +40,19 @@ function doGet(e) {
       prochaineAction : e.parameter.prochaineAction || '',
     });
     else if (action === 'crm-update-statut') result = crmUpdateContactStatut(e.parameter.nom || '', e.parameter.statut || '');
+    else if (action === 'send-email')      result = sendEmailISIS(e.parameter.to || '', e.parameter.subject || '', e.parameter.body || '');
+    else if (action === 'create-event')    result = createCalendarEvent({
+      titre : e.parameter.titre || '', debut: e.parameter.debut || '', fin: e.parameter.fin || '',
+      desc  : e.parameter.desc  || '', rappel: e.parameter.rappel || 30,
+    });
+    else if (action === 'create-doc')      result = createGoogleDoc(e.parameter.titre || '', e.parameter.contenu || '');
+    else if (action === 'create-folder')   result = createDriveFolder(e.parameter.nom || '');
+    else if (action === 'edit-doc')        result = editGoogleDoc(e.parameter.nom || '', e.parameter.contenu || '', e.parameter.mode || 'append');
+    else if (action === 'notion-update')   result = notionUpdatePage(e.parameter.id || '', e.parameter.contenu || '');
     else if (action === 'auto-brief-on')   result = activerBriefMatinal();
     else if (action === 'auto-urgences-on') result = activerAlertesUrgences();
+    else if (action === 'auto-resume-on')  result = activerResumeHebdo();
+    else if (action === 'auto-rappels-on') result = activerRappelsAgenda();
     else if (action === 'auto-off')        result = desactiverAuto();
     else if (action === 'auto-status')     result = statutAutomatisations();
     else                                   result = { emails: getEmails(false), agenda: getAgenda() };
@@ -391,6 +402,102 @@ function getAgenda(joursSuivants) {
 }
 
 // ============================================================
+//  ACTIONS D'ÉCRITURE — Email / Agenda / Docs / Drive / Notion
+// ============================================================
+function sendEmailISIS(to, subject, body) {
+  if (!to || !subject) return { error: 'Destinataire ou sujet manquant.' };
+  try {
+    GmailApp.sendEmail(to, subject, body || '');
+    return { success: true };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+function createCalendarEvent(params) {
+  if (!params.titre || !params.debut) return { error: 'Titre ou date de début manquant.' };
+  try {
+    const start = new Date(params.debut);
+    const end   = params.fin ? new Date(params.fin) : new Date(start.getTime() + 3600000);
+    const rappel = parseInt(params.rappel, 10) || 30;
+
+    const event = CalendarApp.getDefaultCalendar().createEvent(params.titre, start, end, {
+      description: params.desc || '',
+    });
+    event.removeAllReminders();
+    event.addPopupReminder(rappel);
+
+    return { success: true, rappel, id: event.getId() };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+function createGoogleDoc(titre, contenu) {
+  if (!titre) return { error: 'Titre manquant.' };
+  try {
+    const doc = DocumentApp.create(titre);
+    if (contenu) doc.getBody().setText(contenu);
+    doc.saveAndClose();
+    const file = DriveApp.getFileById(doc.getId());
+    return { success: true, url: file.getUrl(), id: doc.getId(), titre };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+function createDriveFolder(nom) {
+  if (!nom) return { error: 'Nom manquant.' };
+  try {
+    const folder = DriveApp.createFolder(nom);
+    return { success: true, nom, url: folder.getUrl() };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+function editGoogleDoc(nom, contenu, mode) {
+  if (!nom) return { error: 'Nom du document manquant.' };
+  try {
+    const iter = DriveApp.searchFiles(
+      `title contains '${nom.replace(/'/g,"\\'")}' and mimeType = '${MimeType.GOOGLE_DOCS}' and trashed = false`
+    );
+    if (!iter.hasNext()) return { error: `Aucun document nommé "${nom}" trouvé.` };
+    const file = iter.next();
+    const doc  = DocumentApp.openById(file.getId());
+    const body = doc.getBody();
+
+    if (mode === 'replace') body.setText(contenu);
+    else                    body.appendParagraph(contenu);
+    doc.saveAndClose();
+
+    return { success: true, titre: doc.getName(), url: file.getUrl(), id: doc.getId() };
+  } catch(e) {
+    return { error: e.toString() };
+  }
+}
+
+function notionUpdatePage(pageId, contenu) {
+  if (!NOTION_KEY) return { error: 'Clé Notion non configurée.' };
+  if (!pageId)      return { error: 'ID de page Notion manquant.' };
+
+  const options = {
+    method            : 'patch',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({
+      children: [{ object:'block', type:'paragraph', paragraph:{ rich_text:[{ text:{ content: contenu || '' } }] } }],
+    }),
+    muteHttpExceptions: true,
+  };
+
+  const res  = UrlFetchApp.fetch(`https://api.notion.com/v1/blocks/${pageId.replace(/-/g,'')}/children`, options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+  return { success: true };
+}
+
+// ============================================================
 //  AUTOMATISATIONS
 // ============================================================
 function activerBriefMatinal() {
@@ -409,6 +516,22 @@ function activerAlertesUrgences() {
   return { success: true, message: 'Alertes urgences activées — vérification toutes les heures.' };
 }
 
+function activerResumeHebdo() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'envoyerResumeHebdo')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('envoyerResumeHebdo').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
+  return { success: true, message: 'Résumé hebdomadaire activé — chaque lundi à 8h.' };
+}
+
+function activerRappelsAgenda() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'verifierRappelsAgenda')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('verifierRappelsAgenda').timeBased().everyMinutes(15).create();
+  return { success: true, message: 'Rappels agenda activés — vérification toutes les 15 minutes.' };
+}
+
 function desactiverAuto() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   return { success: true, message: 'Toutes les automatisations désactivées.' };
@@ -417,8 +540,10 @@ function desactiverAuto() {
 function statutAutomatisations() {
   const triggers = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
   return {
-    briefMatinal : triggers.includes('envoyerBriefMatinal'),
-    alertesUrgences: triggers.includes('verifierUrgences'),
+    briefMatinal      : triggers.includes('envoyerBriefMatinal'),
+    alertesUrgences   : triggers.includes('verifierUrgences'),
+    resumeHebdomadaire: triggers.includes('envoyerResumeHebdo'),
+    rappelsAgenda     : triggers.includes('verifierRappelsAgenda'),
     total: triggers.length,
   };
 }
@@ -462,4 +587,33 @@ function verifierUrgences() {
   const user  = Session.getActiveUser().getEmail();
   const lines = crits.map(e => e.fromName + ' — ' + e.subject).join('\n');
   GmailApp.sendEmail(user, 'ISIS ALERTE — ' + crits.length + ' email(s) critique(s)', lines);
+}
+
+function envoyerResumeHebdo() {
+  const emailData  = getEmails(false);
+  const agendaData = getAgenda(7);
+  const user = Session.getActiveUser().getEmail();
+  const date = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'EEEE dd MMMM yyyy');
+
+  let corps = 'Bonjour,\n\nVoici votre résumé hebdomadaire ISIS du ' + date + '\n\n';
+  corps += '── AGENDA DE LA SEMAINE ────────────\n';
+  if (agendaData.events.length === 0) {
+    corps += 'Aucun événement prévu.\n';
+  } else {
+    agendaData.events.forEach(ev => {
+      corps += ev.debut + ' — ' + ev.titre + (ev.lieu ? ' (' + ev.lieu + ')' : '') + '\n';
+    });
+  }
+  corps += '\n' + emailData.nonLus + ' emails non lus, ' + emailData.urgents + ' urgent(s).\n\nBonne semaine,\nISIS';
+
+  GmailApp.sendEmail(user, 'ISIS — Résumé hebdomadaire du ' + date, corps);
+}
+
+function verifierRappelsAgenda() {
+  const data   = getAgenda(1);
+  const proches = data.events.filter(e => e.dansMinutes >= 0 && e.dansMinutes <= 30);
+  if (proches.length === 0) return;
+  const user  = Session.getActiveUser().getEmail();
+  const lines = proches.map(e => e.titre + ' — dans ' + e.dansMinutes + ' min' + (e.lieu ? ' (' + e.lieu + ')' : '')).join('\n');
+  GmailApp.sendEmail(user, 'ISIS RAPPEL — événement(s) à venir', lines);
 }
