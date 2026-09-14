@@ -566,6 +566,7 @@ body {
 .isis-card-folder { border-left: 3px solid var(--amber); }
 .isis-card-verif  { border-left: 3px solid var(--accent); }
 .isis-card-notion { border-left: 3px solid var(--notion); }
+.isis-card-crm    { border-left: 3px solid #ec4899; }
 .isis-morning-brief { border-left: 3px solid #f59e0b; }
 
 /* ── Brief du matin ── */

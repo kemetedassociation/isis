@@ -1291,7 +1291,8 @@ Si une action n'a pas été détectée automatiquement, DIS-LE CLAIREMENT et gui
 Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'as pas reçu de confirmation visuelle que l'action a été déclenchée.
 NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
 
-CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, création de docs, envoi d'emails, automatisations.
+CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations.
+Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté". Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
 }
@@ -1585,6 +1586,24 @@ async function executePendingAction() {
       }
       reply = `Échec : ${result.error}`;
     }
+    else if (type === 'create-contact') {
+      result = await fetchGoogleData('crm-add', {
+        nom: data.nom, statut: data.statut || 'Prospect',
+        telephone: data.telephone || '', email: data.email || '',
+        entreprise: data.entreprise || '', notes: (data.notes || '').substring(0, 500),
+      });
+      if (result.success) {
+        reply = `Contact "${data.nom}" ajouté au CRM. ✓`;
+        removeThinking(thinkId);
+        addMessage('isis', reply);
+        addCard(renderCrmContactCard({...data, url: result.url}, true));
+        history.push({ role:'model', parts:[{text:reply}] });
+        speak(reply);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+      reply = `Échec : ${result.error}`;
+    }
 
     reply = reply || 'Action exécutée.';
     removeThinking(thinkId);
@@ -1758,6 +1777,21 @@ Instruction : ${instruction}`
   );
   const parsed = parseAIJson(raw);
   if (!parsed) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
+  return parsed;
+}
+
+async function preparerContact(instruction) {
+  const raw = await callAIOneShot(
+    `Extrais les informations d'un contact CRM depuis cette instruction. Réponds UNIQUEMENT avec du JSON valide, rien d'autre.
+{"nom":"Nom complet","statut":"Prospect","telephone":"","email":"","entreprise":"","notes":""}
+RÈGLES :
+- statut doit être exactement l'une de ces valeurs : Prospect, Contacté, Proposition envoyée, Client, Perdu (par défaut "Prospect")
+- Laisse les champs inconnus en chaîne vide, n'invente rien
+- notes : tout détail utile mentionné (contexte, besoin, provenance) en une phrase courte
+Instruction : ${instruction}`
+  );
+  const parsed = parseAIJson(raw);
+  if (!parsed || !parsed.nom) throw new Error('Format JSON incorrect — relance la commande, l\'IA a mal formaté sa réponse');
   return parsed;
 }
 
@@ -2087,6 +2121,84 @@ Demande : "${userText}"`
     return;
   }
 
+  // ── CRM Notion (contacts) ──
+  const wantsCrmList = /(?:liste|montre|affiche|voir|donne[\s-]?moi)\s+(?:mes\s+|les\s+)?contacts?\b|\bmon\s+crm\b|\ble\s+crm\b|pipeline\s+(?:commercial|de\s+vente|crm)|contacts?\s+(?:du|dans\s+le|sur\s+le)\s+crm/i.test(ut);
+  const wantsCrmAdd  = /ajoute(?:r)?\s+.{0,60}(?:dans|au|à)\s+(?:le\s+|mon\s+)?crm|(?:crée|enregistre|inscris|ajoute)\s+(?:un\s+|ce\s+|cette?\s+)?(?:nouveau\s+)?contact\b/i.test(ut);
+  const crmStatusMatch = ut.match(/(?:passe|marque|mets?|change)\s+(.{2,50}?)\s+(?:en|au\s+statut\s+de|au\s+statut|comme)\s+(prospect|contact[ée]e?|proposition\s*envoy[ée]e?|client|perdu|gagn[ée])\b/i);
+
+  if (wantsCrmList && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Consultation du CRM...'); setHolo('thinking');
+    try {
+      const statutMap = { prospect:'Prospect', contacté:'Contacté', client:'Client', perdu:'Perdu' };
+      let statutFilter = '';
+      for (const [kw, val] of Object.entries(statutMap)) {
+        if (new RegExp(`\\b${kw}s?\\b`, 'i').test(ut)) { statutFilter = val; break; }
+      }
+      const result = await fetchGoogleData('crm-list', statutFilter ? { statut: statutFilter } : {});
+      removeThinking(thinkId);
+      if (result.contacts?.length) {
+        addCard(renderCrmListCard(result.contacts, statutFilter));
+        const r = `${result.contacts.length} contact(s)${statutFilter ? ' — statut ' + statutFilter : ''} dans ton CRM.`;
+        addMessage('isis', r); speak(r);
+        history.push({ role:'model', parts:[{text:r}] });
+      } else {
+        const r = 'Aucun contact dans ton CRM pour le moment.';
+        addMessage('isis', r); speak(r);
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de consulter le CRM : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (crmStatusMatch && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Mise à jour CRM...'); setHolo('thinking');
+    try {
+      const nomBrut  = crmStatusMatch[1].replace(/^(le\s+contact|le\s+prospect|la\s+fiche\s+de)\s+/i, '').trim();
+      const statutBrut = crmStatusMatch[2].toLowerCase();
+      const statutNorm = /perdu/.test(statutBrut) ? 'Perdu'
+        : /gagn|client/.test(statutBrut)          ? 'Client'
+        : /proposition/.test(statutBrut)          ? 'Proposition envoyée'
+        : /contact/.test(statutBrut)              ? 'Contacté'
+        : 'Prospect';
+      const result = await fetchGoogleData('crm-update-statut', { nom: nomBrut, statut: statutNorm });
+      removeThinking(thinkId);
+      const r = result.success ? `${result.nom} passé en statut "${statutNorm}". ✓` : `Échec : ${result.error}`;
+      addMessage('isis', r); speak(r);
+      history.push({ role:'model', parts:[{text:r}] });
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de mettre à jour le contact : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
+  if (wantsCrmAdd && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Préparation du contact...'); setHolo('thinking');
+    try {
+      const contact = await preparerContact(userText);
+      removeThinking(thinkId);
+      pendingAction = { type: 'create-contact', data: contact };
+      addMessage('isis', `Contact "${contact.nom}" prêt — je l'ajoute au CRM ?`);
+      addCard(renderCrmContactCard(contact, false));
+      speak(`Contact ${contact.nom} prêt. Je l'ajoute au CRM ?`);
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible de préparer le contact : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
+
   // ── Prospect / Création site web ──
   const wantsProspect = /prospect|cl\s+coiffure|evea|zilan|mez.?auto|propos(?:e|ition)\s*[-–]?\s*(?:site|offre|devis|commerciale?)|(?:rédige|fais|prépare|écris|crée|génère)\s+(?:une?\s+)?(?:proposition|offre|devis)\s+(?:commerciale?\s+)?(?:de\s+)?(?:site|web|création\s+de\s+site|prestation)|(?:email|mail|message)\s+(?:de\s+)?(?:démarchage|prospection|prospect)|contacter\s+(?:un|ce|le|la|des)\s+(?:prospect|client\s+potentiel|commerce|boutique|restaurant|salon|garage)|site\s+(?:web\s+)?pour\s+(?:le|la|un|une|leur|son|sa)\s+\w|offre\s+(?:commerciale?|de\s+services?|de\s+création)/i.test(userText);
   if (wantsProspect && CFG.scriptUrl) {
@@ -2133,6 +2245,11 @@ Demande : "${userText}"`
         if (nr.error) checks.push({ label:'Notion', ok:false, warn:true, detail:nr.error });
         else checks.push({ label:'Notion', ok:true, warn:false, detail:`${nr.pages?.length ?? 0} page(s) partagée(s)` });
       } catch(e) { checks.push({ label:'Notion', ok:false, warn:true, detail:'Non configuré (clé NOTION_KEY manquante)' }); }
+      try {
+        const cr = await fetchGoogleData('crm-list');
+        if (cr.error) checks.push({ label:'CRM', ok:false, warn:true, detail:cr.error });
+        else checks.push({ label:'CRM', ok:true, warn:false, detail:`${cr.total ?? 0} contact(s)` });
+      } catch(e) { checks.push({ label:'CRM', ok:false, warn:true, detail:'Indisponible (nécessite Notion configuré)' }); }
       checks.push({ label:'Apps Script', ok:true, warn:false, detail:'URL configurée' });
     } else {
       checks.push({ label:'Gmail / Agenda / Drive / Notion', ok:false, warn:true, detail:'URL Apps Script non configurée (⚙)' });
@@ -3205,6 +3322,62 @@ function renderFilesCard(files, query) {
       <div>
         <div class="isis-card-title">${title}</div>
         <div class="isis-card-meta">Google Drive · ${files.length} fichier(s)</div>
+      </div>
+    </div>
+    <div class="isis-file-list">${items}</div>
+  </div>`;
+}
+
+function crmStatutColor(statut) {
+  return ({
+    'Prospect'            : '#3b82f6',
+    'Contacté'            : '#f59e0b',
+    'Proposition envoyée' : '#fb923c',
+    'Client'              : '#22c55e',
+    'Perdu'               : '#ef4444',
+  })[statut] || 'var(--text-dim)';
+}
+
+function renderCrmContactCard(c, confirmed) {
+  const color = crmStatutColor(c.statut || 'Prospect');
+  const lignes = [
+    c.entreprise && `🏢 ${esc(c.entreprise)}`,
+    c.telephone  && `📞 ${esc(c.telephone)}`,
+    c.email      && `✉️ ${esc(c.email)}`,
+    c.notes      && `📝 ${esc(c.notes)}`,
+  ].filter(Boolean).join('<br>');
+  return `<div class="isis-card isis-card-crm">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">👤</span>
+      <div style="min-width:0">
+        <div class="isis-card-title">${esc(c.nom)}</div>
+        <div class="isis-card-meta"><span style="color:${color};font-weight:700">● ${esc(c.statut||'Prospect')}</span></div>
+      </div>
+    </div>
+    ${lignes ? `<div class="isis-card-body">${lignes}</div>` : ''}
+    ${confirmed
+      ? (c.url ? `<a class="isis-card-link" style="border-color:#ec4899;color:#ec4899;background:rgba(236,72,153,.1)" href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir dans Notion →</a>` : '')
+      : `<div style="padding:8px 14px 10px;font-size:11px;color:var(--text-dim)">Dis "oui" pour ajouter ce contact au CRM ou "non" pour annuler.</div>`}
+  </div>`;
+}
+
+function renderCrmListCard(contacts, statutFilter) {
+  const items = contacts.slice(0,12).map(c => {
+    const color = crmStatutColor(c.statut || 'Prospect');
+    const sub = [c.entreprise, c.telephone].filter(Boolean).join(' · ');
+    return `<a class="isis-file-item" href="${esc(c.url||'#')}" target="_blank" rel="noopener">
+      <span class="isis-file-icon">👤</span>
+      <span class="isis-file-name">${esc(c.nom)}${sub ? ` <span style="color:var(--text-dim);font-weight:400">· ${esc(sub)}</span>` : ''}</span>
+      <span class="isis-file-badge" style="color:${color};border-color:${color}55">${esc(c.statut||'')}</span>
+    </a>`;
+  }).join('');
+  const title = statutFilter ? `Contacts · ${esc(statutFilter)}` : 'Contacts CRM';
+  return `<div class="isis-card isis-card-crm">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">📇</span>
+      <div>
+        <div class="isis-card-title">${title}</div>
+        <div class="isis-card-meta">Notion CRM · ${contacts.length} contact(s)</div>
       </div>
     </div>
     <div class="isis-file-list">${items}</div>

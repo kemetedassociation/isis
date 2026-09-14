@@ -1,10 +1,12 @@
 // ============================================================
-//  ISIS — GOOGLE APPS SCRIPT v4
-//  Proxy pour : Gmail + Google Agenda + Notion
+//  ISIS — GOOGLE APPS SCRIPT v5
+//  Proxy pour : Gmail + Google Agenda + Notion + CRM
 //
 //  CONFIGURATION :
 //  1. Collez votre clé Notion ci-dessous (ligne NOTION_KEY)
-//  2. Déployez → Nouvelle version → Déployer
+//  2. Partagez au moins une page Notion avec l'intégration ISIS
+//     (la base CRM sera créée automatiquement dedans)
+//  3. Déployez → Nouvelle version → Déployer
 // ============================================================
 
 // ──── METTEZ VOTRE CLÉ NOTION ICI ────────────────────────────
@@ -27,6 +29,17 @@ function doGet(e) {
     else if (action === 'drive-search')    result = getDriveFiles(query);
     else if (action === 'drive-recent')    result = getDriveFiles('');
     else if (action === 'drive-read')      result = getDriveDocContent(e.parameter.id || '');
+    else if (action === 'crm-list')        result = crmListContacts(e.parameter.statut || '');
+    else if (action === 'crm-add')         result = crmAddContact({
+      nom             : e.parameter.nom || '',
+      statut          : e.parameter.statut || 'Prospect',
+      telephone       : e.parameter.telephone || '',
+      email           : e.parameter.email || '',
+      entreprise      : e.parameter.entreprise || '',
+      notes           : e.parameter.notes || '',
+      prochaineAction : e.parameter.prochaineAction || '',
+    });
+    else if (action === 'crm-update-statut') result = crmUpdateContactStatut(e.parameter.nom || '', e.parameter.statut || '');
     else if (action === 'auto-brief-on')   result = activerBriefMatinal();
     else if (action === 'auto-urgences-on') result = activerAlertesUrgences();
     else if (action === 'auto-off')        result = desactiverAuto();
@@ -113,6 +126,157 @@ function _notionTitle(item) {
       return prop.title.map(t => t.plain_text).join('');
   }
   return 'Sans titre';
+}
+
+// ============================================================
+//  CRM — contacts stockés dans une base Notion (auto-créée)
+// ============================================================
+function crmGetDatabaseId() {
+  return PropertiesService.getScriptProperties().getProperty('CRM_DB_ID') || '';
+}
+
+function crmEnsureDatabase() {
+  if (!NOTION_KEY) return { error: 'Clé Notion non configurée.' };
+
+  const existing = crmGetDatabaseId();
+  if (existing) return { id: existing };
+
+  const searchRes = notionSearch('');
+  if (searchRes.error || !searchRes.pages?.length) {
+    return { error: 'Aucune page Notion partagée. Partage une page avec l\'intégration ISIS dans Notion pour initialiser le CRM.' };
+  }
+  const parentId = searchRes.pages[0].id.replace(/-/g, '');
+
+  const options = {
+    method            : 'post',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({
+      parent    : { type: 'page_id', page_id: parentId },
+      title     : [{ type: 'text', text: { content: 'ISIS — Contacts CRM' } }],
+      properties: {
+        'Name'             : { title: {} },
+        'Statut'           : { select: { options: [
+          { name: 'Prospect',             color: 'blue'   },
+          { name: 'Contacté',             color: 'yellow' },
+          { name: 'Proposition envoyée',  color: 'orange' },
+          { name: 'Client',               color: 'green'  },
+          { name: 'Perdu',                color: 'red'    },
+        ]}},
+        'Téléphone'        : { phone_number: {} },
+        'Email'            : { email: {} },
+        'Entreprise'       : { rich_text: {} },
+        'Notes'            : { rich_text: {} },
+        'Prochaine action' : { date: {} },
+      },
+    }),
+    muteHttpExceptions: true,
+  };
+
+  const res  = UrlFetchApp.fetch('https://api.notion.com/v1/databases', options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+
+  PropertiesService.getScriptProperties().setProperty('CRM_DB_ID', data.id);
+  return { id: data.id, created: true };
+}
+
+function crmListContacts(statutFilter) {
+  const ensure = crmEnsureDatabase();
+  if (ensure.error) return { error: ensure.error };
+
+  const payload = { page_size: 30, sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }] };
+  if (statutFilter) payload.filter = { property: 'Statut', select: { equals: statutFilter } };
+
+  const options = {
+    method            : 'post',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify(payload),
+    muteHttpExceptions: true,
+  };
+
+  const res  = UrlFetchApp.fetch(`https://api.notion.com/v1/databases/${ensure.id}/query`, options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+
+  const contacts = (data.results || []).map(_crmPageToContact);
+  return { contacts, total: contacts.length };
+}
+
+function crmAddContact(params) {
+  const ensure = crmEnsureDatabase();
+  if (ensure.error) return { error: ensure.error };
+  if (!params.nom) return { error: 'Nom du contact manquant.' };
+
+  const properties = { 'Name': { title: [{ text: { content: params.nom } }] } };
+  if (params.statut)          properties['Statut']            = { select: { name: params.statut } };
+  if (params.telephone)       properties['Téléphone']         = { phone_number: params.telephone };
+  if (params.email)           properties['Email']             = { email: params.email };
+  if (params.entreprise)      properties['Entreprise']        = { rich_text: [{ text: { content: params.entreprise } }] };
+  if (params.notes)           properties['Notes']             = { rich_text: [{ text: { content: params.notes } }] };
+  if (params.prochaineAction) properties['Prochaine action']  = { date: { start: params.prochaineAction } };
+
+  const options = {
+    method            : 'post',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({ parent: { database_id: ensure.id }, properties }),
+    muteHttpExceptions: true,
+  };
+
+  const res  = UrlFetchApp.fetch('https://api.notion.com/v1/pages', options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+  return { success: true, id: data.id, url: data.url, nom: params.nom };
+}
+
+function crmUpdateContactStatut(nom, statut) {
+  const ensure = crmEnsureDatabase();
+  if (ensure.error) return { error: ensure.error };
+  if (!nom || !statut) return { error: 'Nom ou statut manquant.' };
+
+  const searchOptions = {
+    method            : 'post',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({ filter: { property: 'Name', title: { contains: nom } }, page_size: 1 }),
+    muteHttpExceptions: true,
+  };
+  const searchRes  = UrlFetchApp.fetch(`https://api.notion.com/v1/databases/${ensure.id}/query`, searchOptions);
+  const searchData = JSON.parse(searchRes.getContentText());
+  if (searchRes.getResponseCode() !== 200) return { error: searchData.message || 'Erreur recherche contact.' };
+  if (!searchData.results?.length) return { error: `Aucun contact trouvé pour "${nom}".` };
+
+  const pageId = searchData.results[0].id;
+  const patchOptions = {
+    method            : 'patch',
+    contentType       : 'application/json',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    payload           : JSON.stringify({ properties: { 'Statut': { select: { name: statut } } } }),
+    muteHttpExceptions: true,
+  };
+  const patchRes  = UrlFetchApp.fetch(`https://api.notion.com/v1/pages/${pageId}`, patchOptions);
+  const patchData = JSON.parse(patchRes.getContentText());
+  if (patchRes.getResponseCode() !== 200) return { error: patchData.message || 'Erreur mise à jour.' };
+
+  return { success: true, nom: _crmPageToContact(patchData).nom, statut };
+}
+
+function _crmPageToContact(page) {
+  const p  = page.properties || {};
+  const rt = prop => (prop?.rich_text || []).map(t => t.plain_text).join('');
+  return {
+    id             : page.id,
+    nom            : (p['Name']?.title || []).map(t => t.plain_text).join('') || 'Sans nom',
+    statut         : p['Statut']?.select?.name || '',
+    telephone      : p['Téléphone']?.phone_number || '',
+    email          : p['Email']?.email || '',
+    entreprise     : rt(p['Entreprise']),
+    notes          : rt(p['Notes']),
+    prochaineAction: p['Prochaine action']?.date?.start || '',
+    url            : page.url,
+  };
 }
 
 // ============================================================
