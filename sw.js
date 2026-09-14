@@ -1,10 +1,10 @@
-// ISIS Service Worker v5 — Cache-first + invalidation forcée
-const CACHE = 'isis-v13';
+// ISIS Service Worker v6 — Cache-first + invalidation forcée
+const CACHE = 'isis-v14';
 const STATIC = [
   './',
   './index.html',
-  './style.css?v=13',
-  './script.js?v=13',
+  './style.css?v=14',
+  './script.js?v=14',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
@@ -34,8 +34,8 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
   if (e.request.method !== 'GET') return;
 
-  // Pour index.html et script.js : Network-first pour toujours avoir la version fraîche
-  const isCore = STATIC.slice(0, 3).some(f => url.pathname.endsWith(f.replace('./', '/')));
+  // Pour index.html, style.css et script.js : Network-first pour toujours avoir la version fraîche
+  const isCore = STATIC.slice(0, 4).some(f => url.pathname.endsWith(f.replace('./', '/').split('?')[0]));
   if (isCore) {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' }).then(res => {
