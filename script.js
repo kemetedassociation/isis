@@ -476,30 +476,63 @@ class HoloViz {
     const pulse = 1 + .07*Math.sin(t*2.5);
     const rp = r*pulse;
 
-    const halo = ctx.createRadialGradient(cx,cy,0,cx,cy,rp*3.2);
-    halo.addColorStop(0, this.col(.3));
+    const halo = ctx.createRadialGradient(cx,cy,0,cx,cy,rp*3.4);
+    halo.addColorStop(0, this.col(.32));
     halo.addColorStop(1, this.col(0));
     ctx.beginPath();
-    ctx.arc(cx,cy,rp*3.2,0,Math.PI*2);
+    ctx.arc(cx,cy,rp*3.4,0,Math.PI*2);
     ctx.fillStyle = halo;
     ctx.fill();
 
+    // Contour organique de l'orbe — se déforme sur la vraie voix (micro ou TTS)
+    // quand disponible, sinon sur une respiration synthétique selon l'état.
+    const pts = 56;
+    if (!this.orbWave || this.orbWave.length !== pts + 1) this.orbWave = new Float32Array(pts + 1);
+    const path = [];
+    for (let i = 0; i <= pts; i++) {
+      const a = (i/pts) * Math.PI * 2;
+      let amp = 0;
+      if (this.analyser && this.audioData && (state === 'listening' || state === 'speaking')) {
+        const idx = Math.floor((i / pts) * this.audioData.length);
+        amp = ((this.audioData[idx] - 128) / 128) * rp * .5;
+      } else {
+        const speed = state === 'idle' ? .5 : state === 'thinking' ? 1.6 : 2.0;
+        const mult  = state === 'idle' ? .05 : state === 'thinking' ? .10 : .16;
+        amp = Math.sin(t*speed + i*.5) * rp * mult + Math.sin(t*speed*1.7 + i*.9) * rp * mult * .5;
+      }
+      this.orbWave[i] = this.orbWave[i]*.55 + amp*.45;
+      const rad = rp + this.orbWave[i];
+      path.push([cx + Math.cos(a)*rad, cy + Math.sin(a)*rad]);
+    }
+
     ctx.beginPath();
-    ctx.arc(cx,cy,rp,0,Math.PI*2);
-    const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,rp);
-    cg.addColorStop(0, this.colSolid(.9));
-    cg.addColorStop(.55,this.col(.45));
-    cg.addColorStop(1,  this.col(.08));
-    ctx.fillStyle = cg;
+    path.forEach(([x,y], i) => i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.closePath();
+
+    const body = ctx.createRadialGradient(cx-rp*.3, cy-rp*.35, rp*.1, cx, cy, rp*1.15);
+    body.addColorStop(0,   this.colSolid(1));
+    body.addColorStop(.5,  this.col(.7));
+    body.addColorStop(1,   this.col(.12));
+    ctx.fillStyle = body;
     ctx.fill();
     ctx.strokeStyle = this.colSolid(.85);
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.3;
     ctx.setLineDash([]);
     ctx.stroke();
 
+    // Reflet spéculaire — donne le volume d'une sphère plutôt qu'un disque plat
+    ctx.save();
+    ctx.clip();
+    const spec = ctx.createRadialGradient(cx-rp*.35, cy-rp*.4, 0, cx-rp*.35, cy-rp*.4, rp*.6);
+    spec.addColorStop(0, 'rgba(255,255,255,.5)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
+    ctx.fillRect(cx-rp*1.6, cy-rp*1.6, rp*3.2, rp*3.2);
+    ctx.restore();
+
     const txt = {idle:'ISIS',listening:'ÉCOUTE',thinking:'...',speaking:'ISIS'};
-    ctx.fillStyle = this.colSolid(1);
-    ctx.font = `bold ${Math.max(9,rp*.48)}px "Segoe UI",sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ctx.font = `bold ${Math.max(9,rp*.42)}px "Segoe UI",sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(txt[state]||'ISIS', cx, cy);
