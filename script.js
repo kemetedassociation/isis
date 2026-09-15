@@ -2956,17 +2956,17 @@ async function _processQueue() {
 
   const next = () => { onDone?.(); _processQueue(); };
 
-  // Cascade voix : ElevenLabs → Google TTS → Azure TTS → OpenAI TTS → StreamElements → Navigateur
+  // Cascade voix : Azure TTS → ElevenLabs → Google TTS → OpenAI TTS → StreamElements → Navigateur
+  if (CFG.azureKey) {
+    const ok = await _speakAzure(text, next);
+    if (ok) return;
+  }
   if (CFG.elevenLabsKey) {
     const ok = await _speakElevenLabs(text, next);
     if (ok) return;
   }
   if (CFG.googleTTSKey) {
     const ok = await _speakGoogleTTS(text, next);
-    if (ok) return;
-  }
-  if (CFG.azureKey) {
-    const ok = await _speakAzure(text, next);
     if (ok) return;
   }
   if (CFG.openaiKey) {
