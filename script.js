@@ -948,36 +948,38 @@ function saveSettingsPanel() {
   const cerebrasKey    = document.getElementById('settingsCerebrasKey')?.value.trim()   || '';
   const url            = document.getElementById('settingsScriptUrl').value.trim();
 
-  if (claudeKey)     { CFG.claudeKey     = claudeKey;     localStorage.setItem('isis_claude_key',      claudeKey);     }
-  if (openaiKey)     { CFG.openaiKey     = openaiKey;     localStorage.setItem('isis_openai_key',      openaiKey);     }
-  if (groqKey)       { CFG.groqKey       = groqKey;       localStorage.setItem('isis_groq_key',        groqKey);       }
-  if (gemKey)        { CFG.apiKey        = gemKey;        localStorage.setItem('isis_api_key',         gemKey);        }
-  if (openrouterKey) { CFG.openrouterKey = openrouterKey; localStorage.setItem('isis_openrouter_key',  openrouterKey); }
-  if (mistralKey)    { CFG.mistralKey    = mistralKey;    localStorage.setItem('isis_mistral_key',     mistralKey);    }
-  if (cerebrasKey)   { CFG.cerebrasKey   = cerebrasKey;   localStorage.setItem('isis_cerebras_key',    cerebrasKey);   }
+  // set(key, val) : enregistre la valeur si non vide, sinon efface complètement
+  // la clé (un champ vidé dans les Paramètres doit réellement se désactiver).
+  const set = (cfgProp, storageKey, val) => {
+    CFG[cfgProp] = val;
+    if (val) localStorage.setItem(storageKey, val);
+    else     localStorage.removeItem(storageKey);
+  };
+
+  set('claudeKey',     'isis_claude_key',     claudeKey);
+  set('openaiKey',     'isis_openai_key',     openaiKey);
+  set('groqKey',       'isis_groq_key',       groqKey);
+  set('apiKey',        'isis_api_key',        gemKey);
+  set('openrouterKey', 'isis_openrouter_key', openrouterKey);
+  set('mistralKey',    'isis_mistral_key',    mistralKey);
+  set('cerebrasKey',   'isis_cerebras_key',   cerebrasKey);
+
   const elevenKey   = document.getElementById('settingsElevenLabsKey')?.value.trim() || '';
-  const elevenVoice = document.getElementById('settingsElevenVoice')?.value.trim()   || '';
-  if (elevenKey)   { CFG.elevenLabsKey = elevenKey;   localStorage.setItem('isis_elevenlabs_key',   elevenKey);   }
-  if (elevenVoice) { CFG.elevenVoiceId = elevenVoice; localStorage.setItem('isis_elevenlabs_voice', elevenVoice); }
+  const elevenVoice = document.getElementById('settingsElevenVoice')?.value.trim()   || '21m00Tcm4TlvDq8ikWAM';
+  set('elevenLabsKey', 'isis_elevenlabs_key',   elevenKey);
+  set('elevenVoiceId', 'isis_elevenlabs_voice', elevenVoice);
+
   const azureKey    = document.getElementById('settingsAzureKey')?.value.trim()    || '';
   const azureRegion = document.getElementById('settingsAzureRegion')?.value.trim() || 'francecentral';
   const azureVoice  = document.getElementById('settingsAzureVoice')?.value.trim()  || 'fr-FR-DeniseNeural';
-  if (azureKey) {
-    CFG.azureKey    = azureKey;
-    CFG.azureRegion = azureRegion;
-    CFG.azureVoice  = azureVoice;
-    localStorage.setItem('isis_azure_key',    azureKey);
-    localStorage.setItem('isis_azure_region', azureRegion);
-    localStorage.setItem('isis_azure_voice',  azureVoice);
-  }
+  set('azureKey',    'isis_azure_key',    azureKey);
+  set('azureRegion', 'isis_azure_region', azureKey ? azureRegion : '');
+  set('azureVoice',  'isis_azure_voice',  azureKey ? azureVoice  : '');
+
   const googleTTSKey   = document.getElementById('settingsGoogleTTSKey')?.value.trim()   || '';
   const googleTTSVoice = document.getElementById('settingsGoogleTTSVoice')?.value.trim() || 'fr-FR-Neural2-A';
-  if (googleTTSKey) {
-    CFG.googleTTSKey   = googleTTSKey;
-    CFG.googleTTSVoice = googleTTSVoice;
-    localStorage.setItem('isis_google_tts_key',   googleTTSKey);
-    localStorage.setItem('isis_google_tts_voice', googleTTSVoice);
-  }
+  set('googleTTSKey',   'isis_google_tts_key',   googleTTSKey);
+  set('googleTTSVoice', 'isis_google_tts_voice', googleTTSKey ? googleTTSVoice : '');
 
   CFG.scriptUrl = url;
   if (url) localStorage.setItem('isis_script_url', url);
