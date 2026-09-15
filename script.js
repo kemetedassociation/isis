@@ -1875,8 +1875,13 @@ async function sendMessage(userText) {
 
   // ── Confirmation d'action en attente ──
   if (pendingAction) {
-    const isOui = /^(?:oui|confirme|ok|vas.?y|envoie|crée|c'est.bon|parfait|go|yes|d'accord|allez|bien sûr|absolument|exactement|fais.?le|fais.?ça|je\s+confirme|bonne\s+idée|accept|valide|ça\s+marche|c'est\s+ça)/i.test(userText.trim());
-    const isNon = /^(?:non|annule|stop|laisse.tomber|pas.maintenant|change|pas\s+encore|attends?|en\s+fait\s+non|finalement\s+non|pas\s+comme\s+ça|non\s+merci|ignore|laisse\s+tomber)/i.test(userText.trim());
+    const trimmedText = userText.trim();
+    // Un "oui"/"ok" isolé confirme l'action, mais si le message continue sur
+    // plusieurs mots, c'est un nouveau sujet — pas une confirmation détournée
+    // par un mot de liaison en début de phrase (ex: "Ok donc pour le CRM...").
+    const isShortReply = trimmedText.split(/\s+/).length <= 6;
+    const isOui = isShortReply && /^(?:oui|confirme|ok|vas.?y|envoie|crée|c'est.bon|parfait|go|yes|d'accord|allez|bien sûr|absolument|exactement|fais.?le|fais.?ça|je\s+confirme|bonne\s+idée|accept|valide|ça\s+marche|c'est\s+ça)/i.test(trimmedText);
+    const isNon = isShortReply && /^(?:non|annule|stop|laisse.tomber|pas.maintenant|change|pas\s+encore|attends?|en\s+fait\s+non|finalement\s+non|pas\s+comme\s+ça|non\s+merci|ignore|laisse\s+tomber)/i.test(trimmedText);
     if (isOui) {
       stopListening();
       addMessage('user', userText);
