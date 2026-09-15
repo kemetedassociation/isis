@@ -1240,7 +1240,7 @@ async function testKey(provider) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'user',content:'OK'}],max_tokens:5}),
+        body: JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'OK'}],max_tokens:5}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
