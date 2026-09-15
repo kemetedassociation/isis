@@ -741,6 +741,7 @@ function showApp() {
 
 // ── SETUP INITIAL ──
 function saveSetup() {
+  unlockAudioPlayback();
   const errBox = document.getElementById('setupError');
   const hideErr = () => { if (errBox) errBox.style.display = 'none'; };
   const showErr = (msg) => {
@@ -1853,6 +1854,7 @@ Instruction : ${instruction}`
 //  ENVOI DE MESSAGE — point d'entrée principal
 // ================================================================
 function sendText() {
+  unlockAudioPlayback();
   const input = document.getElementById('textInput');
   const text  = input.value.trim();
   if (!text) return;
@@ -2829,6 +2831,7 @@ async function saveSessionToNotion() {
 }
 
 function toggleListening() {
+  unlockAudioPlayback();
   if (isSpeaking) { stopSpeaking(); return; } // couper ISIS si elle parle
   if (convMode) { stopConversation(); return; }
   isListening ? stopListening() : startListening();
@@ -2881,6 +2884,7 @@ function stopListening() {
 }
 
 function toggleConvMode() {
+  unlockAudioPlayback();
   if (convMode) {
     stopConversation();
     addMessage('isis', 'Mode conversation désactivé.');
@@ -2898,6 +2902,28 @@ function toggleConvMode() {
 // ================================================================
 //  SYNTHÈSE VOCALE — file d'attente + ElevenLabs + fallback navigateur
 // ================================================================
+
+// Safari/iOS bloque silencieusement audio.play() si l'appel n'est pas
+// directement lié à un geste utilisateur. On "débloque" l'audio dès le
+// premier tap (clic bouton, envoi de message) pour que les speak() qui
+// arrivent plus tard, après des appels réseau, ne soient plus rejetés.
+let _audioUnlocked = false;
+function unlockAudioPlayback() {
+  if (_audioUnlocked) return;
+  _audioUnlocked = true;
+  try {
+    const a = new Audio();
+    a.muted = true;
+    a.play().catch(() => {});
+  } catch(e) {}
+  try {
+    if (window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance('');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    }
+  } catch(e) {}
+}
 
 // Arrêt immédiat (utilisateur coupe la parole)
 function stopSpeaking() {
