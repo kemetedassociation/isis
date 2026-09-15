@@ -998,6 +998,7 @@ function saveSettingsPanel() {
 }
 
 async function testElevenLabs() {
+  unlockAudioPlayback();
   const box = document.getElementById('elevenResult');
   box.style.display = 'block';
   box.className = 'test-result';
@@ -1041,6 +1042,7 @@ async function testElevenLabs() {
 }
 
 async function previewElevenVoice() {
+  unlockAudioPlayback();
   const box     = document.getElementById('elevenResult');
   const key     = document.getElementById('settingsElevenLabsKey').value.trim() || CFG.elevenLabsKey;
   const voiceId = document.getElementById('settingsElevenVoice').value.trim()   || CFG.elevenVoiceId;
@@ -1066,6 +1068,7 @@ async function previewElevenVoice() {
 }
 
 async function testAzure() {
+  unlockAudioPlayback();
   const box    = document.getElementById('azureResult');
   const key    = document.getElementById('settingsAzureKey').value.trim();
   const region = document.getElementById('settingsAzureRegion').value.trim() || 'francecentral';
@@ -1110,6 +1113,7 @@ async function testAzure() {
 }
 
 async function testGoogleTTS() {
+  unlockAudioPlayback();
   const box   = document.getElementById('googleTTSResult');
   const key   = document.getElementById('settingsGoogleTTSKey').value.trim();
   const voice = document.getElementById('settingsGoogleTTSVoice').value.trim() || 'fr-FR-Neural2-A';
