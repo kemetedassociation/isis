@@ -1869,6 +1869,11 @@ function sendText() {
 async function sendMessage(userText) {
   if (!userText) return;
 
+  // Tout nouveau message coupe immédiatement la voix en cours — on ne veut
+  // jamais qu'ISIS termine une ancienne phrase pendant que la nouvelle
+  // demande est déjà en train d'être traitée en silence.
+  if (isSpeaking) stopSpeaking();
+
   // FIX : vérifie toutes les clés possibles
   const hasKey = CFG.claudeKey || CFG.openaiKey || CFG.groqKey || CFG.apiKey;
   if (!hasKey) { alert('Aucune clé API configurée. Clique sur ⚙.'); return; }
