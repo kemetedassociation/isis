@@ -1,10 +1,10 @@
 // ISIS Service Worker v6 — Cache-first + invalidation forcée
-const CACHE = 'isis-v23';
+const CACHE = 'isis-v24';
 const STATIC = [
   './',
   './index.html',
-  './style.css?v=23',
-  './script.js?v=23',
+  './style.css?v=24',
+  './script.js?v=24',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
@@ -39,8 +39,11 @@ self.addEventListener('fetch', e => {
   if (isCore) {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' }).then(res => {
+        // clone() DOIT être appelé avant que le corps ne commence à être
+        // consommé — sinon "Response body is already used".
         if (res && res.status === 200) {
-          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
         }
         return res;
       }).catch(() => caches.match(e.request))
@@ -53,7 +56,8 @@ self.addEventListener('fetch', e => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
         if (res && res.status === 200 && res.type !== 'opaque') {
-          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
         }
         return res;
       }).catch(() => caches.match('./index.html'));
