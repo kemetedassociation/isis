@@ -1434,7 +1434,7 @@ Si une action n'a pas été détectée automatiquement, DIS-LE CLAIREMENT et gui
 Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'as pas reçu de confirmation visuelle que l'action a été déclenchée.
 NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
 
-CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations, lecture de pièces jointes (image ou PDF via le trombone 📎 à côté du champ de message), historique des conversations sauvegardé dans Notion et rechargeable depuis n'importe quel appareil (icône horloge dans l'en-tête, ou "montre mes conversations").
+CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations, lecture de pièces jointes (image ou PDF via le trombone 📎 à côté du champ de message), historique des conversations sauvegardé dans Notion et rechargeable depuis n'importe quel appareil (icône horloge dans l'en-tête, ou "montre mes conversations"), gestion de l'agenda à partir des mails administratifs ("gère mon agenda selon mes mails") — tu analyses, tu reformules ce que tu proposes d'ajouter, et tu attends toujours un "oui" avant de créer quoi que ce soit, même pour plusieurs événements à la fois.
 Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté", "synchronise mon CRM" (crée/ouvre un Google Sheet miroir, synchronisé dans les deux sens avec Notion). Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
@@ -1795,6 +1795,24 @@ async function executePendingAction() {
         return;
       }
       reply = `Échec : ${result.error}`;
+    }
+    else if (type === 'create-multiple-events') {
+      let ok = 0;
+      for (const ev of data) {
+        const r = await fetchGoogleData('create-event', {
+          titre: ev.titre, debut: ev.debut, fin: ev.fin || '',
+          desc: (ev.description || '').substring(0, 200),
+          rappel: ev.rappel || 30,
+        });
+        if (r.success) ok++;
+      }
+      reply = `${ok}/${data.length} événement(s) ajouté(s) à ton agenda. ✓`;
+      removeThinking(thinkId);
+      addMessage('isis', reply);
+      history.push({ role:'model', parts:[{text:reply}] });
+      speak(reply);
+      setStatus('idle','En attente'); setHolo('idle');
+      return;
     }
 
     reply = reply || 'Action exécutée.';
@@ -2327,6 +2345,48 @@ Demande : "${userText}"`
   // ── Historique des conversations ──
   const wantsConvHistory = /(?:montre|affiche|liste|voir)\s+(?:mes\s+|les\s+)?conversations?|historique\s+(?:des\s+)?conversations?|reprends?\s+(?:une\s+|la\s+|notre\s+)?(?:ancienne\s+)?conversation|continue\s+(?:une\s+|la\s+|notre\s+)?(?:ancienne\s+)?conversation/i.test(ut);
   if (wantsConvHistory) { await showConversationHistory(); return; }
+
+  // ── Gestion de l'agenda à partir des mails administratifs ──
+  // Toujours reformuler ce qu'elle propose et attendre le "oui" — jamais
+  // de création d'événement sans confirmation explicite, même en lot.
+  const wantsManageSchedule = /g[eè]re\s+(?:mon\s+|le\s+)?emploi\s+du\s+temps|g[eè]re\s+(?:mon\s+)?agenda\s+(?:selon|avec|en\s+fonction\s+de|gr[âa]ce\s+[àa])\s+(?:mes\s+)?mails?|occupe.?toi\s+de\s+(?:mon\s+)?agenda\s+(?:selon|avec)\s+(?:mes\s+)?mails?|mets?\s+[àa]\s+jour\s+(?:mon\s+)?agenda\s+(?:avec|selon)\s+(?:mes\s+)?mails?\s+admin/i.test(ut);
+  if (wantsManageSchedule && CFG.scriptUrl) {
+    const thinkId = addThinking();
+    setStatus('thinking', 'Analyse des emails administratifs...'); setHolo('thinking');
+    try {
+      const data   = await fetchGoogleData('emails');
+      const emails = (data.emails?.emails || []).slice(0, 20);
+      const emailsResume = emails.map((e,i) => `${i+1}. De ${e.fromName} — "${e.subject}" — ${e.preview}`).join('\n');
+      const raw = await callAIOneShot(
+        `Voici les emails récents de Monsieur. Identifie UNIQUEMENT ceux à caractère administratif contenant une date, un rendez-vous, une échéance ou une action à planifier. Réponds UNIQUEMENT avec du JSON compact, rien d'autre :
+{"events":[{"titre":"...", "debut":"YYYY-MM-DDTHH:MM:SS", "fin":"YYYY-MM-DDTHH:MM:SS", "description":"origine : nom expéditeur + résumé court", "rappel":30}]}
+Si rien ne correspond, réponds {"events":[]}.
+Date aujourd'hui : ${new Date().toISOString().split('T')[0]}
+Emails :
+${emailsResume}`
+      );
+      const parsed = parseAIJson(raw);
+      const events = parsed?.events || [];
+      removeThinking(thinkId);
+
+      if (!events.length) {
+        const m = "Je n'ai trouvé aucun email administratif nécessitant un ajout à l'agenda pour l'instant.";
+        addMessage('isis', m); speak(m);
+      } else {
+        pendingAction = { type: 'create-multiple-events', data: events };
+        const recap = events.map((ev,i) => `${i+1}. ${ev.titre} — ${new Date(ev.debut).toLocaleString('fr-FR',{dateStyle:'long',timeStyle:'short'})}`).join('\n');
+        addMessage('isis', `Voici ce que je propose d'après tes mails administratifs :\n\n${recap}\n\nJe les ajoute à ton agenda ?`);
+        events.forEach(ev => addCard(renderEventCard(ev, false)));
+        speak(`J'ai trouvé ${events.length} élément${events.length>1?'s':''} administratif${events.length>1?'s':''} à planifier. Je les ajoute à ton agenda ?`);
+      }
+    } catch(e) {
+      removeThinking(thinkId);
+      const m = `Impossible d'analyser tes emails administratifs : ${e.message}`;
+      addMessage('isis', m); speak(m);
+    }
+    setStatus('idle','En attente'); setHolo('idle');
+    return;
+  }
 
   // ── CRM Notion (contacts) ──
   const wantsCrmList = /(?:liste|montre|affiche|voir|donne[\s-]?moi)\s+(?:mes\s+|les\s+)?contacts?\b|\bmon\s+crm\b|\ble\s+crm\b|pipeline\s+(?:commercial|de\s+vente|crm)|contacts?\s+(?:du|dans\s+le|sur\s+le)\s+crm/i.test(ut);
