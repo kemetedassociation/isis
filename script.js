@@ -923,9 +923,9 @@ async function checkEtatInitial() {
       ).catch(() => null);
       if (draft) {
         pendingAction = { type: 'send-email', data: draft };
-        const preview = `Brouillon prêt :\nÀ : ${draft.to}\nObjet : RE: ${draft.subject}\n\n${draft.body}\n\nJe l'envoie ?`;
         setTimeout(() => {
-          addMessage('isis', preview);
+          addMessage('isis', `Brouillon de réponse prêt pour ${urgents[0].fromName} — je l'envoie ?`);
+          addCard(renderEmailCard(draft, false));
           speak(`Brouillon de réponse prêt pour ${urgents[0].fromName}. Je l'envoie ?`);
         }, 2000);
       }
@@ -1635,7 +1635,17 @@ async function executePendingAction() {
       result = await fetchGoogleData('send-email', {
         to: data.to, subject: data.subject, body: (data.body || '').substring(0, 1200),
       });
-      reply = result.success ? `Email envoyé à ${data.to}.` : `Échec : ${result.error}`;
+      if (result.success) {
+        reply = `Email envoyé à ${data.to}. ✓`;
+        removeThinking(thinkId);
+        addMessage('isis', reply);
+        addCard(renderEmailCard(data, true));
+        history.push({ role:'model', parts:[{text:reply}] });
+        speak(reply);
+        setStatus('idle','En attente'); setHolo('idle');
+        return;
+      }
+      reply = `Échec : ${result.error}`;
     }
     else if (type === 'create-event') {
       result = await fetchGoogleData('create-event', {
@@ -2031,8 +2041,8 @@ async function sendMessage(userText) {
       const draft = await preparerEmail(userText);
       removeThinking(thinkId);
       pendingAction = { type: 'send-email', data: draft };
-      const preview = `Voici le brouillon :\n\nÀ : ${draft.to || '(à préciser)'}\nObjet : ${draft.subject}\n\n${draft.body}\n\nJe l'envoie ?`;
-      addMessage('isis', preview);
+      addMessage('isis', `Brouillon prêt — je l'envoie ?`);
+      addCard(renderEmailCard(draft, false));
       speak(`Brouillon prêt. À ${draft.to || 'préciser'}. Objet : ${draft.subject}. Je l'envoie ?`);
     } catch(e) {
       removeThinking(thinkId);
@@ -3425,6 +3435,22 @@ function renderDocCard(doc, url) {
     </div>
     ${doc.contenu ? `<div class="isis-card-body">${esc((doc.contenu||'').substring(0,160))}…</div>` : ''}
     ${url ? `<a class="isis-card-link green" href="${url}" target="_blank" rel="noopener">Ouvrir dans Google Docs →</a>` : `<div style="padding:8px 14px 10px;font-size:11px;color:var(--text-dim)">Dis "oui" pour créer le document.</div>`}
+  </div>`;
+}
+
+function renderEmailCard(draft, sent) {
+  return `<div class="isis-card isis-card-email">
+    <div class="isis-card-header">
+      <span class="isis-card-icon">✉️</span>
+      <div style="min-width:0">
+        <div class="isis-card-title">${esc(draft.subject || 'Email')}</div>
+        <div class="isis-card-meta">À : ${esc(draft.to || '(à préciser)')} · ${new Date().toLocaleDateString('fr-FR')}</div>
+      </div>
+    </div>
+    <div class="isis-email-body">${esc(draft.body || '').replace(/\n/g,'<br>')}</div>
+    ${sent
+      ? `<div class="isis-email-status">✓ Envoyé</div>`
+      : `<div style="padding:8px 14px 10px;font-size:11px;color:var(--text-dim)">Dis "oui" pour l'envoyer ou "non" pour annuler.</div>`}
   </div>`;
 }
 

@@ -567,6 +567,16 @@ body {
 .isis-card-verif  { border-left: 3px solid var(--accent); }
 .isis-card-notion { border-left: 3px solid var(--notion); }
 .isis-card-crm    { border-left: 3px solid #ec4899; }
+.isis-card-email  { border-left: 3px solid var(--accent); max-width: 380px; }
+.isis-email-body  {
+  padding: 12px 14px; color: var(--text); font-size: 12.5px; line-height: 1.6;
+  border-bottom: 1px solid var(--border); white-space: pre-wrap;
+  max-height: 280px; overflow-y: auto;
+}
+.isis-email-status {
+  padding: 8px 14px 10px; font-size: 11px; font-weight: 700;
+  color: var(--green); letter-spacing: .3px;
+}
 .isis-morning-brief { border-left: 3px solid #f59e0b; }
 
 /* ── Brief du matin ── */
