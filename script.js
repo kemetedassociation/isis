@@ -23,13 +23,15 @@ const CFG = {
   scriptUrl      : localStorage.getItem('isis_script_url')       || '',
 };
 
+// Vérifié sur ai.google.dev/gemini-api/docs/models — toute la gamme 1.5 et
+// même 2.0-flash sont retirées côté Google ; modèles "lite" en premier pour
+// rester dans le quota gratuit (même leçon que pour Groq).
 const API_CANDIDATES = [
-  { version:'v1beta', model:'gemini-1.5-flash-latest'    },
-  { version:'v1beta', model:'gemini-1.5-flash-001'       },
-  { version:'v1beta', model:'gemini-1.5-flash-8b-latest' },
-  { version:'v1',     model:'gemini-1.5-flash'            },
-  { version:'v1beta', model:'gemini-1.5-pro-latest'      },
-  { version:'v1beta', model:'gemini-pro'                 },
+  { version:'v1beta', model:'gemini-2.5-flash-lite' },
+  { version:'v1beta', model:'gemini-3.5-flash-lite' },
+  { version:'v1beta', model:'gemini-2.5-flash'      },
+  { version:'v1beta', model:'gemini-3.1-flash-lite' },
+  { version:'v1beta', model:'gemini-3.5-flash'      },
 ];
 let workingApi = JSON.parse(localStorage.getItem('isis_working_api') || 'null');
 
@@ -1271,34 +1273,55 @@ async function testKey(provider) {
     } else if (provider === 'mistral') {
       const key = document.getElementById('settingsMistralKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Mistral (console.mistral.ai).'; return; }
-      const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'open-mistral-nemo',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ Mistral AI valide (open-mistral-nemo gratuit).';
+      let lastErr = null, workingModel = null;
+      for (const model of MISTRAL_MODELS) {
+        try {
+          const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+            body: JSON.stringify({model,max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+          });
+          const data = await res.json();
+          if (!res.ok) { lastErr = new Error(data.error?.message || `HTTP ${res.status}`); continue; }
+          workingModel = model; break;
+        } catch(e) { lastErr = e; }
+      }
+      if (!workingModel) throw lastErr || new Error('Aucun modèle Mistral disponible pour cette clé.');
+      result.className = 'test-result ok'; result.textContent = `✓ Mistral AI valide (modèle ${workingModel}).`;
     } else if (provider === 'cerebras') {
       const key = document.getElementById('settingsCerebrasKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Cerebras (cloud.cerebras.ai).'; return; }
-      const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'llama3.1-8b',max_tokens:5,messages:[{role:'user',content:'OK'}]}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ Cerebras valide — Llama ultra-rapide activé.';
+      let lastErr = null, workingModel = null;
+      for (const model of CEREBRAS_MODELS) {
+        try {
+          const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+            body: JSON.stringify({model,max_tokens:5,messages:[{role:'user',content:'OK'}]}),
+          });
+          const data = await res.json();
+          if (!res.ok) { lastErr = new Error(data.error?.message || `HTTP ${res.status}`); continue; }
+          workingModel = model; break;
+        } catch(e) { lastErr = e; }
+      }
+      if (!workingModel) throw lastErr || new Error('Aucun modèle Cerebras disponible pour cette clé.');
+      result.className = 'test-result ok'; result.textContent = `✓ Cerebras valide (modèle ${workingModel}).`;
     } else {
       const key = document.getElementById('settingsApiKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Gemini.'; return; }
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({contents:[{role:'user',parts:[{text:'OK'}]}],generationConfig:{maxOutputTokens:5}}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+      let lastErr = null, ok = false;
+      for (const { version, model } of API_CANDIDATES) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${key}`,{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({contents:[{role:'user',parts:[{text:'OK'}]}],generationConfig:{maxOutputTokens:5}}),
+          });
+          const data = await res.json();
+          if (!res.ok) { lastErr = new Error(data.error?.message || `HTTP ${res.status}`); continue; }
+          ok = true; break;
+        } catch(e) { lastErr = e; }
+      }
+      if (!ok) throw lastErr || new Error('Aucun modèle Gemini disponible pour cette clé.');
       result.className = 'test-result ok'; result.textContent = '✓ Clé Gemini valide.';
     }
   } catch(e) {
@@ -1527,40 +1550,57 @@ async function callOpenRouter() {
 }
 
 // ── Mistral AI (open-mistral-nemo = modèle gratuit) ──
+// open-mistral-nemo est décommissionné côté Mistral (vérifié sur docs.mistral.ai) —
+// Ministral 3B/8B en remplacement, nouvelle puis ancienne génération de tag.
+const MISTRAL_MODELS = ['ministral-3-8b-25-12', 'ministral-3-3b-25-12', 'ministral-8b-2410', 'ministral-3b-2410'];
 async function callMistral() {
-  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method : 'POST',
-    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.mistralKey}` },
-    body: JSON.stringify({
-      model   : 'open-mistral-nemo',
-      max_tokens: _maxTokens,
-      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `Mistral HTTP ${res.status}`);
-  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+  let lastErr = null;
+  for (const model of MISTRAL_MODELS) {
+    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method : 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.mistralKey}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: _maxTokens,
+        messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+    lastErr = new Error(data.error?.message || `Mistral HTTP ${res.status}`);
+  }
+  throw lastErr;
 }
 
 // ── Cerebras (Llama ultra-rapide, gratuit) ──
+// Vérifié sur inference-docs.cerebras.ai — plus aucun modèle Llama sur les
+// endpoints publics, seulement gpt-oss-120b et qwen-3.8-27b.
+const CEREBRAS_MODELS = ['gpt-oss-120b', 'qwen-3.8-27b'];
 async function callCerebras() {
-  const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-    method : 'POST',
-    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.cerebrasKey}` },
-    body: JSON.stringify({
-      model   : 'llama3.3-70b',
-      max_tokens: _maxTokens,
-      messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `Cerebras HTTP ${res.status}`);
-  return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+  let lastErr = null;
+  for (const model of CEREBRAS_MODELS) {
+    const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+      method : 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${CFG.cerebrasKey}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: _maxTokens,
+        messages: [{ role:'system', content: buildSystemPrompt() }, ...historyToOpenAI()],
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) return data.choices?.[0]?.message?.content || 'Pas de réponse.';
+    lastErr = new Error(data.error?.message || `Cerebras HTTP ${res.status}`);
+  }
+  throw lastErr;
 }
 
 // ── OpenAI ──
+// gpt-4o-mini / gpt-3.5-turbo décommissionnés côté OpenAI (vérifié sur
+// developers.openai.com/api/docs/models) — gpt-5.6-luna est le modèle
+// économique actuel, gardé en dernier recours les anciens noms au cas où.
 async function callOpenAI() {
-  for (const model of ['gpt-4o-mini', 'gpt-3.5-turbo']) {
+  for (const model of ['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-4o-mini', 'gpt-3.5-turbo']) {
     try {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method : 'POST',
