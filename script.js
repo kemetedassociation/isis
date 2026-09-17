@@ -1417,13 +1417,16 @@ async function tryGeminiEndpoint({version, model}) {
 // Liste vérifiée sur console.groq.com/docs/models — les anciens noms
 // (llama3-70b-8192, llama-3.1-70b-versatile, gemma2-9b-it) sont tous
 // décommissionnés côté Groq et ne doivent plus être utilisés.
+// Modèles les plus légers en premier — le quota gratuit Groq (tokens/minute)
+// est serré, et un petit modèle a bien plus de chances de tenir dedans que
+// les 70B/120B, surtout avec un prompt système volumineux.
 const GROQ_MODELS = [
-  'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
-  'openai/gpt-oss-120b',
   'openai/gpt-oss-20b',
-  'groq/compound',
   'groq/compound-mini',
+  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',
+  'groq/compound',
 ];
 
 function historyToOpenAI() {
@@ -1449,17 +1452,18 @@ async function callGroq() {
       if (!res.ok) {
         const code = data.error?.code || '';
         const msg  = data.error?.message || `HTTP ${res.status}`;
-        // Le texte réel de Groq ("does not exist or you do not have access")
-        // ne contient ni "model_not_found" ni "404" — on doit aussi vérifier
-        // le champ error.code et des formulations équivalentes du message.
-        if (/model_not_found|decommissioned/i.test(code) || /does not exist|do not have access|decommissioned|not found/i.test(msg)) {
+        // On passe au modèle suivant pour : modèle inaccessible/retiré, ET
+        // limite de débit (tokens/minute) — un modèle plus petit peut très
+        // bien rentrer dans le quota gratuit là où un plus gros échoue.
+        if (/model_not_found|decommissioned|rate_limit/i.test(code) ||
+            /does not exist|do not have access|decommissioned|not found|too large|tokens per minute|rate.?limit/i.test(msg)) {
           continue;
         }
         throw new Error(msg);
       }
       return data.choices?.[0]?.message?.content || 'Pas de réponse.';
     } catch(e) {
-      if (/model_not_found|decommissioned|does not exist|do not have access|not found/i.test(e.message)) continue;
+      if (/model_not_found|decommissioned|does not exist|do not have access|not found|too large|tokens per minute|rate.?limit/i.test(e.message)) continue;
       throw e;
     }
   }
