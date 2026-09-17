@@ -1414,11 +1414,16 @@ async function tryGeminiEndpoint({version, model}) {
 // ================================================================
 //  GROQ
 // ================================================================
+// Liste vérifiée sur console.groq.com/docs/models — les anciens noms
+// (llama3-70b-8192, llama-3.1-70b-versatile, gemma2-9b-it) sont tous
+// décommissionnés côté Groq et ne doivent plus être utilisés.
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
-  'llama3-70b-8192',
-  'llama-3.1-70b-versatile',
-  'gemma2-9b-it',
+  'llama-3.1-8b-instant',
+  'openai/gpt-oss-120b',
+  'openai/gpt-oss-20b',
+  'groq/compound',
+  'groq/compound-mini',
 ];
 
 function historyToOpenAI() {
