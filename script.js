@@ -605,6 +605,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (conv) conv.scrollTop = conv.scrollHeight;
       }, 400);
     });
+    // Dès la toute première frappe (pas besoin d'envoyer) : on sait que
+    // l'utilisateur s'adresse à ISIS par écrit, elle se tait immédiatement.
+    txtInput.addEventListener('input', () => {
+      unlockAudioPlayback();
+      if (isSpeaking) stopSpeaking();
+    });
   }
 
   // Ouvre directement l'app si des clés sont déjà sauvegardées
