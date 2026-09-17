@@ -2972,29 +2972,15 @@ async function _processQueue() {
 
   const next = () => { onDone?.(); _processQueue(); };
 
-  // Cascade voix : Azure TTS → ElevenLabs → Google TTS → OpenAI TTS → StreamElements → Navigateur
-  if (CFG.azureKey) {
-    const ok = await _speakAzure(text, next);
-    if (ok) return;
-  }
-  if (CFG.elevenLabsKey) {
-    const ok = await _speakElevenLabs(text, next);
-    if (ok) return;
-  }
-  if (CFG.googleTTSKey) {
-    const ok = await _speakGoogleTTS(text, next);
-    if (ok) return;
-  }
-  if (CFG.openaiKey) {
-    const ok = await _speakOpenAI(text, next);
-    if (ok) return;
-  }
-  // StreamElements : voix française gratuite sans clé (toujours disponible)
-  {
-    const ok = await _speakStreamElements(text, next);
-    if (ok) return;
-  }
-  _speakBrowser(text, next);
+  // Azure exclusif : tant que la clé n'est pas configurée, ISIS reste
+  // muette plutôt que de basculer sur une voix de repli moins bonne.
+  if (!CFG.azureKey) { next(); return; }
+  const ok = await _speakAzure(text, next);
+  if (ok) return;
+  // Azure configurée mais l'appel a échoué (quota, région, réseau) — on
+  // n'utilise pas de repli non plus, pour rester cohérent avec le choix
+  // "Azure et seulement Azure".
+  next();
 }
 
 // ── Google Cloud TTS — 1M chars/mois GRATUITS Neural2, voix françaises naturelles ──
