@@ -1416,7 +1416,10 @@ async function callGemini() {
       }
       return result;
     } catch(e) {
-      const isModelError = /not found|quota|limit.*0|not supported|RESOURCE_EXHAUSTED|404|Unknown name|Invalid JSON|unavailable|deprecated/i.test(e.message);
+      // "no longer available to new users" est la formulation réelle que
+      // Google renvoie pour un modèle retiré — ne contient ni "unavailable"
+      // ni "deprecated" littéralement, donc à couvrir explicitement.
+      const isModelError = /not found|quota|limit.*0|not supported|RESOURCE_EXHAUSTED|404|Unknown name|Invalid JSON|unavailable|deprecated|no longer available|is not found/i.test(e.message);
       if (isModelError) { continue; }
       throw e;
     }
