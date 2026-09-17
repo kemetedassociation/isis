@@ -74,6 +74,27 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// POST utilisé uniquement pour l'upload de fichiers — le contenu base64
+// dépasse largement la limite d'une URL GET/JSONP. Le front envoie en
+// Content-Type: text/plain pour éviter le préflight CORS (Apps Script ne
+// sait pas répondre à une requête OPTIONS).
+function doPost(e) {
+  let result;
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (body.action === 'upload-file') {
+      result = uploadFile(body.filename || '', body.mimeType || '', body.data || '');
+    } else {
+      result = { error: 'Action POST inconnue.' };
+    }
+  } catch(err) {
+    result = { error: err.toString() };
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // ============================================================
 //  NOTION
 // ============================================================
@@ -434,11 +455,53 @@ function getDriveFiles(query) {
 function getDriveDocContent(fileId) {
   if (!fileId) return { error: 'ID de fichier manquant.' };
   try {
-    const doc     = DocumentApp.openById(fileId);
-    const contenu = doc.getBody().getText().substring(0, 3000);
-    return { titre: doc.getName(), contenu };
+    const file = DriveApp.getFileById(fileId);
+    const mime = file.getMimeType();
+
+    if (mime === MimeType.GOOGLE_DOCS) {
+      const doc = DocumentApp.openById(fileId);
+      return { titre: doc.getName(), contenu: doc.getBody().getText().substring(0, 3000) };
+    }
+
+    if (mime === MimeType.PDF) {
+      // Nécessite le service avancé "Drive API" activé dans l'éditeur Apps
+      // Script (Services → + → Drive API) — sert à convertir le PDF en
+      // Google Doc via OCR pour en extraire le texte.
+      if (typeof Drive === 'undefined') {
+        return { error: 'Lecture PDF non disponible : active le service avancé "Drive API" dans l\'éditeur Apps Script (Services → + → Drive API), puis redéploie.' };
+      }
+      let ocrDoc;
+      try {
+        ocrDoc = Drive.Files.copy(
+          { title: '_ISIS_OCR_TEMP_' + file.getName(), mimeType: MimeType.GOOGLE_DOCS },
+          fileId,
+          { ocr: true, ocrLanguage: 'fr' }
+        );
+        const doc     = DocumentApp.openById(ocrDoc.id);
+        const contenu = doc.getBody().getText().substring(0, 3000);
+        DriveApp.getFileById(ocrDoc.id).setTrashed(true);
+        return { titre: file.getName(), contenu };
+      } catch(e2) {
+        if (ocrDoc?.id) try { DriveApp.getFileById(ocrDoc.id).setTrashed(true); } catch(_) {}
+        return { error: 'OCR du PDF impossible : ' + e2.toString() };
+      }
+    }
+
+    return { error: `Type de fichier non pris en charge pour la lecture (${mime}). Seuls Google Docs et PDF sont supportés.` };
   } catch(e) {
     return { error: 'Impossible de lire ce fichier : ' + e.toString() };
+  }
+}
+
+function uploadFile(filename, mimeType, base64Data) {
+  if (!filename || !base64Data) return { error: 'Nom de fichier ou contenu manquant.' };
+  try {
+    const bytes = Utilities.base64Decode(base64Data);
+    const blob  = Utilities.newBlob(bytes, mimeType || 'application/octet-stream', filename);
+    const file  = DriveApp.createFile(blob);
+    return { success: true, id: file.getId(), url: file.getUrl(), nom: filename };
+  } catch(e) {
+    return { error: e.toString() };
   }
 }
 

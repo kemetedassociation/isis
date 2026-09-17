@@ -1434,7 +1434,7 @@ Si une action n'a pas été détectée automatiquement, DIS-LE CLAIREMENT et gui
 Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'as pas reçu de confirmation visuelle que l'action a été déclenchée.
 NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
 
-CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations.
+CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations, lecture de pièces jointes (image ou PDF via le trombone 📎 à côté du champ de message).
 Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté", "synchronise mon CRM" (crée/ouvre un Google Sheet miroir, synchronisé dans les deux sens avec Notion). Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
@@ -2832,6 +2832,134 @@ function fetchGoogleData(action, extraParams = {}) {
     script.onerror = () => { cleanup(); reject(new Error('Apps Script inaccessible')); };
     document.head.appendChild(script);
   });
+}
+
+// POST — uniquement pour l'upload de fichiers (trop volumineux pour une URL
+// GET/JSONP). Content-Type text/plain pour éviter le préflight CORS que
+// Apps Script ne sait pas gérer.
+async function postToAppsScript(action, data) {
+  if (!CFG.scriptUrl) throw new Error('URL Apps Script non configurée dans ⚙');
+  const res = await fetch(CFG.scriptUrl, {
+    method : 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body   : JSON.stringify({ action, ...data }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ================================================================
+//  PIÈCES JOINTES — images (analysées par Claude) et PDF (OCR via Drive)
+// ================================================================
+async function handleAttachedFile(file) {
+  if (!file) return;
+  unlockAudioPlayback();
+  if (isSpeaking) stopSpeaking();
+
+  if (file.type.startsWith('image/')) {
+    await handleAttachedImage(file);
+  } else if (file.type === 'application/pdf') {
+    await handleAttachedPdf(file);
+  } else {
+    const m = `Type de fichier non pris en charge : ${file.type || 'inconnu'}. Seuls les images et les PDF sont acceptés pour le moment.`;
+    addMessage('isis', m); speak(m);
+  }
+}
+
+async function handleAttachedImage(file) {
+  if (!CFG.claudeKey) {
+    const m = `L'analyse d'image nécessite une clé Claude configurée dans ⚙ Paramètres.`;
+    addMessage('isis', m); speak(m);
+    return;
+  }
+  addMessage('user', `📎 Image jointe : ${file.name}`);
+  const thinkId = addThinking();
+  setStatus('thinking', "Analyse de l'image..."); setHolo('thinking');
+  try {
+    const base64 = await fileToBase64(file);
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method : 'POST',
+      headers: {
+        'Content-Type'                             : 'application/json',
+        'x-api-key'                                 : CFG.claudeKey,
+        'anthropic-version'                         : '2023-06-01',
+        'anthropic-dangerous-direct-browser-access' : 'true',
+      },
+      body: JSON.stringify({
+        model    : 'claude-haiku-4-5-20251001',
+        max_tokens: _maxTokens,
+        system   : buildSystemPrompt(),
+        messages : [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } },
+            { type: 'text', text: "L'utilisateur t'a envoyé cette image. Décris ce que tu vois et aide-le en conséquence." },
+          ],
+        }],
+      }),
+    });
+    const data = await res.json();
+    removeThinking(thinkId);
+    if (!res.ok) throw new Error(data.error?.message || `Claude HTTP ${res.status}`);
+    const reply = data.content?.[0]?.text || 'Pas de réponse.';
+    history.push({ role:'user', parts:[{text: `[Image jointe : ${file.name}]`}] });
+    history.push({ role:'model', parts:[{text: reply}] });
+    addMessage('isis', reply); speak(reply);
+  } catch(e) {
+    removeThinking(thinkId);
+    const m = `Impossible d'analyser l'image : ${e.message}`;
+    addMessage('isis', m); speak(m);
+  }
+  setStatus('idle','En attente'); setHolo('idle');
+}
+
+async function handleAttachedPdf(file) {
+  if (!CFG.scriptUrl) {
+    const m = "Configure l'URL Google Apps Script dans ⚙ pour envoyer des PDF.";
+    addMessage('isis', m); speak(m);
+    return;
+  }
+  addMessage('user', `📎 PDF joint : ${file.name}`);
+  const thinkId = addThinking();
+  setStatus('thinking', 'Envoi et lecture du PDF...'); setHolo('thinking');
+  try {
+    const base64 = await fileToBase64(file);
+    const up = await postToAppsScript('upload-file', { filename: file.name, mimeType: file.type, data: base64 });
+    const read = await fetchGoogleData('drive-read', { id: up.id });
+    removeThinking(thinkId);
+
+    if (read.error) {
+      const m = `PDF envoyé dans ton Drive, mais lecture impossible : ${read.error}`;
+      addMessage('isis', m); speak(m);
+      addCard(renderFolderCard(file.name, up.url));
+      setStatus('idle','En attente'); setHolo('idle');
+      return;
+    }
+
+    addCard(renderDocCard({ titre: read.titre, contenu: read.contenu.substring(0,200)+'…' }, up.url));
+    const contenuTronque = read.contenu.substring(0, 2500);
+    const analyse = await callAIOneShot(
+      `Tu es ISIS. L'utilisateur vient de joindre le PDF "${read.titre}". Voici son contenu extrait :\n\n${contenuTronque}\n\nRésume-le clairement et propose une suite si pertinent. Réponds directement, sans préambule.`
+    );
+    history.push({ role:'user', parts:[{text: `[PDF joint : ${read.titre}]`}] });
+    history.push({ role:'model', parts:[{text: analyse}] });
+    addMessage('isis', analyse); speak(analyse);
+  } catch(e) {
+    removeThinking(thinkId);
+    const m = `Erreur avec le PDF : ${e.message}`;
+    addMessage('isis', m); speak(m);
+  }
+  setStatus('idle','En attente'); setHolo('idle');
 }
 
 async function testNotion() {
