@@ -25,6 +25,7 @@ function doGet(e) {
     else if (action === 'agenda')        result = { agenda: getAgenda()      };
     else if (action === 'brief')         result = { emails: getEmails(false), agenda: getAgenda(1) };
     else if (action === 'notion-search') result = notionSearch(query);
+    else if (action === 'notion-read-page') result = notionReadPage(e.parameter.id || '');
     else if (action === 'notion-create') result = notionCreate(e.parameter.titre || query, e.parameter.contenu || '');
     else if (action === 'drive-search')    result = getDriveFiles(query);
     else if (action === 'drive-recent')    result = getDriveFiles('');
@@ -160,6 +161,29 @@ function _notionTitle(item) {
       return prop.title.map(t => t.plain_text).join('');
   }
   return 'Sans titre';
+}
+
+// Lit le texte brut d'une page Notion (utilisé pour recharger un ancien
+// journal de conversation depuis n'importe quel appareil).
+function notionReadPage(pageId) {
+  if (!NOTION_KEY) return { error: 'Clé Notion non configurée.' };
+  if (!pageId)      return { error: 'ID de page manquant.' };
+
+  const options = {
+    method            : 'get',
+    headers           : { 'Authorization': `Bearer ${NOTION_KEY}`, 'Notion-Version': '2022-06-28' },
+    muteHttpExceptions: true,
+  };
+  const res  = UrlFetchApp.fetch(`https://api.notion.com/v1/blocks/${pageId.replace(/-/g,'')}/children?page_size=100`, options);
+  const data = JSON.parse(res.getContentText());
+  if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
+
+  const contenu = (data.results || [])
+    .map(b => (b[b.type]?.rich_text || []).map(t => t.plain_text).join(''))
+    .filter(Boolean)
+    .join('\n');
+
+  return { contenu: contenu.substring(0, 8000) };
 }
 
 // ============================================================

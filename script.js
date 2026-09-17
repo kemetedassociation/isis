@@ -1434,7 +1434,7 @@ Si une action n'a pas été détectée automatiquement, DIS-LE CLAIREMENT et gui
 Ne dis JAMAIS "je vais créer", "j'essaie de créer", "je vais ajouter" si tu n'as pas reçu de confirmation visuelle que l'action a été déclenchée.
 NE SIMULE JAMAIS une action réussie. Si tu n'as pas de confirmation de succès, dis "l'action n'a pas pu être déclenchée."
 
-CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations, lecture de pièces jointes (image ou PDF via le trombone 📎 à côté du champ de message).
+CAPACITÉS : Gmail, Agenda Google, Notion, Google Drive, CRM contacts (dans Notion), création de docs, envoi d'emails, automatisations, lecture de pièces jointes (image ou PDF via le trombone 📎 à côté du champ de message), historique des conversations sauvegardé dans Notion et rechargeable depuis n'importe quel appareil (icône horloge dans l'en-tête, ou "montre mes conversations").
 Pour le CRM : "ajoute [nom] comme contact/prospect au CRM", "liste mes contacts", "passe [nom] en statut client/perdu/contacté", "synchronise mon CRM" (crée/ouvre un Google Sheet miroir, synchronisé dans les deux sens avec Notion). Tu ne peux pas créer ou modifier un contact toi-même — uniquement guider vers ces phrases si l'action n'a pas été déclenchée automatiquement.
 
 CONTEXTE : ${today} — ${time}${goals}${ints}${mem}`;
@@ -2324,6 +2324,10 @@ Demande : "${userText}"`
     return;
   }
 
+  // ── Historique des conversations ──
+  const wantsConvHistory = /(?:montre|affiche|liste|voir)\s+(?:mes\s+|les\s+)?conversations?|historique\s+(?:des\s+)?conversations?|reprends?\s+(?:une\s+|la\s+|notre\s+)?(?:ancienne\s+)?conversation|continue\s+(?:une\s+|la\s+|notre\s+)?(?:ancienne\s+)?conversation/i.test(ut);
+  if (wantsConvHistory) { await showConversationHistory(); return; }
+
   // ── CRM Notion (contacts) ──
   const wantsCrmList = /(?:liste|montre|affiche|voir|donne[\s-]?moi)\s+(?:mes\s+|les\s+)?contacts?\b|\bmon\s+crm\b|\ble\s+crm\b|pipeline\s+(?:commercial|de\s+vente|crm)|contacts?\s+(?:du|dans\s+le|sur\s+le)\s+crm/i.test(ut);
   const wantsCrmAdd  = /ajoute(?:r)?\s+.{0,60}(?:dans|au|à)\s+(?:le\s+|mon\s+)?crm|(?:crée|enregistre|inscris|ajoute)\s+(?:un\s+|ce\s+|cette?\s+)?(?:nouveau\s+)?contact\b/i.test(ut);
@@ -3103,6 +3107,95 @@ async function saveSessionToNotion() {
   } catch(e) {
     console.warn('[ISIS] Notion journal:', e.message);
   }
+}
+
+// ================================================================
+//  HISTORIQUE DES CONVERSATIONS — persistance Notion cross-appareil
+// ================================================================
+async function showConversationHistory() {
+  if (!CFG.scriptUrl) {
+    const m = "Configure l'URL Apps Script dans ⚙ pour accéder à l'historique.";
+    addMessage('isis', m); speak(m);
+    return;
+  }
+  const thinkId = addThinking();
+  setStatus('thinking', 'Recherche des conversations...'); setHolo('thinking');
+  try {
+    const res = await fetchGoogleData('notion-search', { query: 'Journal ISIS' });
+    removeThinking(thinkId);
+    if (res.error) {
+      const m = `Historique indisponible : ${res.error}`;
+      addMessage('isis', m); speak(m);
+    } else if (!res.pages?.length) {
+      const m = 'Aucune conversation sauvegardée pour le moment.';
+      addMessage('isis', m); speak(m);
+    } else {
+      addMessage('isis', `${res.pages.length} conversation(s) sauvegardée(s) — touche-en une pour la reprendre.`);
+      addCard(renderConversationsCard(res.pages));
+    }
+  } catch(e) {
+    removeThinking(thinkId);
+    const m = `Impossible de charger l'historique : ${e.message}`;
+    addMessage('isis', m); speak(m);
+  }
+  setStatus('idle','En attente'); setHolo('idle');
+}
+
+function renderConversationsCard(pages) {
+  const items = pages.map(p => `
+    <div class="isis-file-item" style="cursor:pointer" data-conv-id="${esc(p.id)}" data-conv-titre="${esc(p.titre)}" onclick="loadConversation(this.dataset.convId, this.dataset.convTitre)">
+      <span style="font-size:16px">💬</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((p.titre||'').replace(/^Journal ISIS\s*—\s*/,''))}</span>
+      ${p.modifié ? `<span style="font-size:10px;color:var(--text-muted);flex-shrink:0">${esc(p.modifié)}</span>` : ''}
+    </div>`).join('');
+  return `<div class="isis-card isis-card-notion" style="padding:12px 14px">
+    <div class="isis-card-header" style="margin-bottom:8px">
+      <span class="isis-card-icon">📜</span>
+      <div><div class="isis-card-title">Historique des conversations</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+  </div>`;
+}
+
+async function loadConversation(pageId, titre) {
+  const thinkId = addThinking();
+  setStatus('thinking', 'Chargement de la conversation...'); setHolo('thinking');
+  try {
+    const res = await fetchGoogleData('notion-read-page', { id: pageId });
+    removeThinking(thinkId);
+    if (res.error || !res.contenu) {
+      const m = `Impossible de charger cette conversation : ${res.error || 'contenu vide'}`;
+      addMessage('isis', m); speak(m);
+      setStatus('idle','En attente'); setHolo('idle');
+      return;
+    }
+
+    const conv = document.getElementById('conversation');
+    conv.innerHTML = '';
+    history = [];
+
+    const blocs = res.contenu.split('\n').filter(Boolean);
+    let restaures = 0;
+    blocs.forEach(ligne => {
+      const m = ligne.match(/^\[(.+?)\]\s+(Monsieur|ISIS)\s*:\s*([\s\S]*)$/);
+      if (!m) return;
+      const [, , qui, texte] = m;
+      const role = qui === 'Monsieur' ? 'user' : 'isis';
+      addMessage(role, texte.trim());
+      history.push({ role: role === 'user' ? 'user' : 'model', parts: [{ text: texte.trim() }] });
+      restaures++;
+    });
+
+    const msg = restaures
+      ? `Conversation "${titre.replace(/^Journal ISIS\s*—\s*/,'')}" rechargée — ${restaures} échange(s). Tu peux continuer où tu t'étais arrêté.`
+      : "Cette conversation n'a pas pu être analysée correctement.";
+    addMessage('isis', msg); speak(msg);
+  } catch(e) {
+    removeThinking(thinkId);
+    const m = `Erreur de chargement : ${e.message}`;
+    addMessage('isis', m); speak(m);
+  }
+  setStatus('idle','En attente'); setHolo('idle');
 }
 
 function toggleListening() {

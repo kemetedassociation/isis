@@ -23,7 +23,7 @@
   <meta property="og:description" content="Assistant IA personnel style JARVIS" />
   <meta property="og:image" content="./icon-512.png" />
 
-  <link rel="stylesheet" href="./style.css?v=35" />
+  <link rel="stylesheet" href="./style.css?v=36" />
 
   <!-- Service Worker — enregistrement immédiat -->
   <script>
@@ -135,6 +135,13 @@
           <span class="status-dot" id="statusDot"></span>
           <span class="status-text" id="statusText">En attente</span>
         </div>
+        <button class="icon-btn" onclick="showConversationHistory()" title="Historique des conversations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l4 2"/>
+          </svg>
+        </button>
         <button class="icon-btn conv-btn" id="convBtn" onclick="toggleConvMode()" title="Mode conversation">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -334,7 +341,7 @@
 
   </div><!-- /.app -->
 
-  <script src="./script.js?v=35"></script>
+  <script src="./script.js?v=36"></script>
   <script>
     // ── PWA iOS Banner ──
     (function() {
