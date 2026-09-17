@@ -41,6 +41,7 @@ function doGet(e) {
     });
     else if (action === 'crm-update-statut') result = crmUpdateContactStatut(e.parameter.nom || '', e.parameter.statut || '');
     else if (action === 'crm-sync-sheet')  result = crmInitSheetSync();
+    else if (action === 'news')            result = getNews();
     else if (action === 'send-email')      result = sendEmailISIS(e.parameter.to || '', e.parameter.subject || '', e.parameter.body || '');
     else if (action === 'create-event')    result = createCalendarEvent({
       titre : e.parameter.titre || '', debut: e.parameter.debut || '', fin: e.parameter.fin || '',
@@ -601,6 +602,40 @@ function notionUpdatePage(pageId, contenu) {
   const data = JSON.parse(res.getContentText());
   if (res.getResponseCode() !== 200) return { error: data.message || `Notion HTTP ${res.getResponseCode()}` };
   return { success: true };
+}
+
+// ============================================================
+//  ACTUALITÉS — flux RSS Google News, gratuit, sans clé
+// ============================================================
+function getNews() {
+  const feeds = [
+    { key: 'geopolitique', label: 'Géopolitique',       url: 'https://news.google.com/rss/search?q=g%C3%A9opolitique%20when:1d&hl=fr&gl=FR&ceid=FR:fr' },
+    { key: 'finance',      label: 'Économie & Finance',  url: 'https://news.google.com/rss/search?q=%C3%A9conomie%20OR%20bourse%20OR%20finance%20when:1d&hl=fr&gl=FR&ceid=FR:fr' },
+    { key: 'politique',    label: 'Politique (France)',  url: 'https://news.google.com/rss/search?q=politique%20France%20when:1d&hl=fr&gl=FR&ceid=FR:fr' },
+    { key: 'monde',        label: 'À la une',            url: 'https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr' },
+  ];
+
+  const news = {};
+  feeds.forEach(f => {
+    try {
+      const res = UrlFetchApp.fetch(f.url, { muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) { news[f.key] = { label: f.label, items: [] }; return; }
+      const doc     = XmlService.parse(res.getContentText());
+      const channel = doc.getRootElement().getChild('channel');
+      const items   = (channel ? channel.getChildren('item') : []).slice(0, 4);
+      news[f.key] = {
+        label: f.label,
+        items: items.map(it => ({
+          titre: (it.getChild('title')?.getText() || '').replace(/\s*-\s*[^-]+$/, ''),
+          url  : it.getChild('link')?.getText() || '',
+        })),
+      };
+    } catch(e) {
+      news[f.key] = { label: f.label, items: [] };
+    }
+  });
+
+  return { news };
 }
 
 // ============================================================

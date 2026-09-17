@@ -735,11 +735,14 @@ function showApp() {
     removeThinking(thinkId);
     addCard(renderMorningBriefCard(brief, forecast));
 
-    // Résumé vocal — inclut désormais le pronostic détaillé, pas juste le prix du BTC
+    // Résumé vocal — météo + conseil pratique + actus du jour + pronostic détaillé
     const w = brief.weather;
     const btc = brief.market?.crypto?.bitcoin;
     let voiceMsg = w ? `${w.temp} degrés à ${w.city}, ${(w.desc || '').toLowerCase()}. ` : '';
+    if (w?.conseil) voiceMsg += `${w.conseil}. `;
     if (btc) voiceMsg += `Bitcoin à ${btc.eur?.toLocaleString('fr-FR')} euros. `;
+    const topNews = Object.values(brief.news || {}).flatMap(c => c.items || []).slice(0, 2);
+    if (topNews.length) voiceMsg += `Côté actualité : ${topNews.map(n => n.titre).join('. ')}. `;
     if (forecast) voiceMsg += forecast;
     if (voiceMsg.trim()) speak(voiceMsg);
 
@@ -789,10 +792,13 @@ function saveSetup() {
 //  BRIEF DU MATIN — Météo + Marchés + Pronostic
 // ================================================================
 async function fetchMorningBrief() {
-  const [weather, market] = await Promise.allSettled([fetchWeather(), fetchMarketPrices()]);
+  const tasks = [fetchWeather(), fetchMarketPrices()];
+  if (CFG.scriptUrl) tasks.push(fetchGoogleData('news'));
+  const [weather, market, news] = await Promise.allSettled(tasks);
   return {
     weather: weather.status === 'fulfilled' ? weather.value : null,
-    market:  market.status  === 'fulfilled' ? market.value  : null
+    market:  market.status  === 'fulfilled' ? market.value  : null,
+    news:    news && news.status === 'fulfilled' ? news.value.news : null,
   };
 }
 
@@ -803,7 +809,30 @@ async function fetchWeather() {
   const d = await r.json();
   const c = d.current_condition?.[0];
   const desc = c?.lang_fr?.[0]?.value || c?.weatherDesc?.[0]?.value || '';
-  return { city, temp: parseInt(c?.temp_C || 0), feels: parseInt(c?.FeelsLikeC || 0), humidity: c?.humidity || '?', wind: c?.windspeedKmph || '?', desc };
+
+  // Chance de pluie sur le reste de la journée (créneaux horaires 3h de wttr.in)
+  // — utile pour le conseil "prends ton parapluie si tu pars tard".
+  const nowH = new Date().getHours() * 100;
+  const hourly = d.weather?.[0]?.hourly || [];
+  const laterSlots = hourly.filter(h => parseInt(h.time, 10) >= nowH);
+  const maxRainChance = (laterSlots.length ? laterSlots : hourly)
+    .reduce((max, h) => Math.max(max, parseInt(h.chanceofrain || 0, 10)), 0);
+
+  const temp   = parseInt(c?.temp_C || 0);
+  const feels  = parseInt(c?.FeelsLikeC || 0);
+  const wind   = parseInt(c?.windspeedKmph || 0);
+
+  const conseils = [];
+  if (feels <= 5)       conseils.push("il va faire vraiment froid — couvre-toi bien, manteau et bonnet conseillés");
+  else if (feels <= 12) conseils.push("prévois une tenue chaude, ça pique un peu dehors");
+  if (maxRainChance >= 60) conseils.push("prends ton parapluie, risque de pluie élevé aujourd'hui, surtout si tu sors tard");
+  else if (maxRainChance >= 35) conseils.push("garde un parapluie sous la main, possibilité d'averses dans la journée");
+  if (wind >= 35) conseils.push("vent assez fort, prévois une veste qui tient bien");
+
+  return {
+    city, temp, feels, humidity: c?.humidity || '?', wind, desc,
+    maxRainChance, conseil: conseils.join('. ') || null,
+  };
 }
 
 async function fetchMarketPrices() {
@@ -837,6 +866,19 @@ function renderMorningBriefCard(brief, forecast) {
     let icon = '🌡️';
     for (const [k, v] of Object.entries(wIcons)) { if ((w.desc || '').includes(k)) { icon = v; break; } }
     wHtml = `<div class="mbf-row"><span class="mbf-key">${icon} ${w.city}</span><span class="mbf-val">${w.temp}°C · <em>${w.desc}</em></span></div><div class="mbf-sub">Ressenti ${w.feels}°C · Humidité ${w.humidity}% · Vent ${w.wind} km/h</div>`;
+    if (w.conseil) wHtml += `<div class="mbf-advice">💡 ${esc(w.conseil)}</div>`;
+  }
+
+  // Actualités
+  let nHtml = '';
+  if (brief?.news) {
+    const cats = Object.values(brief.news).filter(c => c.items?.length);
+    if (cats.length) {
+      nHtml = `<div class="mbf-section">📰 Actualités</div>` + cats.map(cat => `
+        <div class="mbf-news-cat">${esc(cat.label)}</div>
+        ${cat.items.slice(0,3).map(it => `<a class="mbf-news-item" href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.titre)}</a>`).join('')}
+      `).join('');
+    }
   }
 
   // Crypto
@@ -880,7 +922,7 @@ function renderMorningBriefCard(brief, forecast) {
       <span class="isis-card-icon">🌅</span>
       <div><div class="isis-card-title">Brief du matin · Mass</div><div class="isis-card-sub">${date}</div></div>
     </div>
-    <div class="mbf-body">${wHtml}${noData}${cHtml}${sHtml}${fHtml}</div>
+    <div class="mbf-body">${wHtml}${noData}${cHtml}${sHtml}${nHtml}${fHtml}</div>
   </div>`;
 }
 
