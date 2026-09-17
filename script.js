@@ -1237,14 +1237,25 @@ async function testKey(provider) {
     } else if (provider === 'groq') {
       const key = document.getElementById('settingsGroqKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé Groq (console.groq.com).'; return; }
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-        body: JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'OK'}],max_tokens:5}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-      result.className = 'test-result ok'; result.textContent = '✓ Clé Groq valide.';
+      // Essaie chaque modèle de la cascade (même liste que la conversation
+      // réelle) — un modèle indisponible sur cette clé ne doit pas invalider
+      // le test si un autre fonctionne.
+      let lastErr = null, workingModel = null;
+      for (const model of GROQ_MODELS) {
+        try {
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+            body: JSON.stringify({model,messages:[{role:'user',content:'OK'}],max_tokens:5}),
+          });
+          const data = await res.json();
+          if (!res.ok) { lastErr = new Error(data.error?.message || `HTTP ${res.status}`); continue; }
+          workingModel = model;
+          break;
+        } catch(e) { lastErr = e; }
+      }
+      if (!workingModel) throw lastErr || new Error('Aucun modèle Groq disponible pour cette clé.');
+      result.className = 'test-result ok'; result.textContent = `✓ Clé Groq valide (modèle ${workingModel}).`;
     } else if (provider === 'openrouter') {
       const key = document.getElementById('settingsOpenrouterKey').value.trim();
       if (!key) { result.className='test-result err'; result.textContent='Entre une clé OpenRouter (openrouter.ai/keys).'; return; }
@@ -1430,14 +1441,24 @@ async function callGroq() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+      if (!res.ok) {
+        const code = data.error?.code || '';
+        const msg  = data.error?.message || `HTTP ${res.status}`;
+        // Le texte réel de Groq ("does not exist or you do not have access")
+        // ne contient ni "model_not_found" ni "404" — on doit aussi vérifier
+        // le champ error.code et des formulations équivalentes du message.
+        if (/model_not_found|decommissioned/i.test(code) || /does not exist|do not have access|decommissioned|not found/i.test(msg)) {
+          continue;
+        }
+        throw new Error(msg);
+      }
       return data.choices?.[0]?.message?.content || 'Pas de réponse.';
     } catch(e) {
-      if (/model_not_found|404|decommissioned/i.test(e.message)) continue;
+      if (/model_not_found|decommissioned|does not exist|do not have access|not found/i.test(e.message)) continue;
       throw e;
     }
   }
-  throw new Error('Aucun modèle Groq disponible.');
+  throw new Error('Aucun modèle Groq disponible pour cette clé.');
 }
 
 // ── Claude ──
